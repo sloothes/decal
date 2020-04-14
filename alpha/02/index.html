@@ -100,7 +100,7 @@
 
 		<script>
 
-			var debugMode = true; // important!
+			debugMode = true; // important!
 			Number.prototype.format = function (){
 				return this.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
 			};
@@ -109,7 +109,7 @@
 
 		<script>
 
-		//	TabUI
+		//	TabUI.
 
 			(function(){
 
@@ -139,15 +139,9 @@
 
 			})();
 
-		</script>
-
-		<script>
-
-		//	Outfit tab.
+		//	Outfit Manager.
 
 			(function(){
-
-			//	Outfit Manager.
 
 				Signal = signals.Signal;
 
@@ -181,69 +175,27 @@
 
 			})();
 
+		</script>
+
+		<script>
+
+		//	Decal tab.
+
 			(function(){
 
-			//	Layer Slot.
+				var tab = TabUI.Decal.tab;
 
-				var layers = {
-					skin:      null,
-					tattoo:    null,
-					makeup:    null,
-					clothing:  null,
-					overcoat:  null,
-					bodypaint: null,
-					underwear: null,
-				};
 
-				var tab = TabUI.Outfit.tab;
-				var row = document.createElement("h3");
-				row.textContent = "Layer";
 
-				var select = document.createElement("select");
-				select.id = "layer-droplist";
-				select.style.cssText = "width:180px;color:#000;float:right;"
-					+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
-					+ "font-size:20px;margin-left:10px;";
 
-				select.appendChild(createOption("Skin"));
-				select.appendChild(createOption("Tattoo"));
-				select.appendChild(createOption("Makeup"));
-				select.appendChild(createOption("Clothing"));
-				select.appendChild(createOption("Overcoat"));
-				select.appendChild(createOption("Bodypaint"));
-				select.appendChild(createOption("Underwear"));
-
-				select.addEventListener( "change", function(){
-					OutfitManager.currentLayer = this.value;
-				});
-
-				OutfitManager.addLayer = 
-				OutfitManager.setLayerValue = function(key, item){
-					layers[ key.toLowerCase() ] = item;
-				};
-
-				OutfitManager.getLayer = 
-				OutfitManager.getLayerValue = function(){
-					return layers[ select.value ];
-				};
-
-				OutfitManager.getLayers = 
-				OutfitManager.getLayerItems = function(){
-					return layers;
-				};
-
-				select.value = "";
-				row.appendChild( select );
-				tab.appendChild( row );
-
-				function createOption(name, value){
-					var option = document.createElement("option");
-					option.text = name;
-					option.value = name.toLowerCase();
-					return option;
-				}
 
 			})();
+
+		</script>
+
+		<script>
+
+		//	Outfit tab.
 
 			(function(){
 
@@ -270,7 +222,7 @@
 					+ "font-size:20px;margin-left:10px;";
 
 				select.appendChild(createOption("Hair"));
-				select.appendChild(createOption("Body"));
+			//	select.appendChild(createOption("Body"));
 				select.appendChild(createOption("Legs"));
 				select.appendChild(createOption("Torso"));
 				select.appendChild(createOption("Shoes"));
@@ -305,6 +257,7 @@
 					slots[ key.toLowerCase() ] = value; // uuid.
 				};
 
+			//	Update material droplist.
 				OutfitManager.outfitDroplistUpdated.add( function( uuid ){
 
 					var select = document.getElementById("material-droplist");
@@ -314,7 +267,8 @@
 
 					if ( !uuid ) return; // important!
 					
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = outfits.find(function(item){ return item.uuid == uuid; });
+
 					if ( !mesh ) throw "outfitDroplistUpdated: mesh not found!";
 
 					if ( Array.isArray(mesh.material) ) 
@@ -339,7 +293,7 @@
 
 			})();
 
-		//	Show/Hide button.
+		//	Add/Remove button.
 
 			(function(){
 
@@ -348,74 +302,93 @@
 				row.style.cssText = "height:40px;";
 
 				var button = document.createElement("div");
+				button.textContent = "Remove";
 				button.style.cssText = "height:40px;font-size:large;";
 				button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
 
 				button.addEventListener( "click", function(){
 					var select = document.getElementById("outfit-droplist");
 					if ( !select ) throw "outfit-droplist not found!";
 					var uuid = OutfitManager.get( select.value );
-					var selected = scene.getObjectByProperty( "uuid", uuid );
+					var selected = getOufitByUUID( uuid );
 					if ( !selected ) throw "selected mesh not found!";
-					selected.visible = !selected.visible;
-					OutfitManager.update.dispatch( selected.visible );
-				});
 
-				OutfitManager.update.add( function( visible ){
 					button.textContent = "Remove";
-					if ( !visible ) button.textContent = "Add";
 					if (OutfitManager.currentSlot) {
 						button.textContent += " ";
 						button.textContent += OutfitManager.currentSlot;
 					}
+
+					scene.remove( selected );
+				});
+				
+				function droplistUpdate( select, uuid ){
+
+					var mesh = getOufitByUUID( uuid );
+
+					if ( !mesh ) { 
+						select.value = ""; 
+						return; 
+					}
+
+					if ( mesh.parent != scene ) 
+						select.value = ""; 
+					else 
+						select.value = uuid;
+				}
+
+				OutfitManager.update.add( function( mesh ){
+
+					scene.add( mesh );
+					button.textContent = "Remove";
+
+					if (OutfitManager.currentSlot) {
+						button.textContent += " ";
+						button.textContent += OutfitManager.currentSlot;
+					}
+
 				});
 
 				OutfitManager.update.add( function(){
 					var uuid = OutfitManager.getItem("hair"); 
 					var select = document.getElementById("hat-droplist");
-					var mesh = scene.getObjectByProperty( "uuid", uuid );
-					if ( !mesh ) { select.value = ""; return; }
-					if ( !mesh.visible ) select.value = ""; else select.value = uuid;
+					droplistUpdate( select, uuid );
 				});
 
 				OutfitManager.update.add( function(){
 					var uuid = OutfitManager.getItem("hair"); 
 					var select = document.getElementById("hair-droplist");
-					var mesh = scene.getObjectByProperty( "uuid", uuid );
-					if ( !mesh ) { select.value = ""; return; }
-					if ( !mesh.visible ) select.value = ""; else select.value = uuid;
+					droplistUpdate( select, uuid );
 				});
 
 				OutfitManager.update.add( function(){
 					var uuid = OutfitManager.getItem("legs"); 
 					var select = document.getElementById("lowerbody-droplist");
-					var mesh = scene.getObjectByProperty( "uuid", uuid );
-					if ( !mesh ) { select.value = ""; return; }
-					if ( !mesh.visible ) select.value = ""; else select.value = uuid;
+					droplistUpdate( select, uuid );
 				});
 
 				OutfitManager.update.add( function(){
 					var uuid = OutfitManager.getItem("torso"); 
 					var select = document.getElementById("upperbody-droplist");
-					var mesh = scene.getObjectByProperty( "uuid", uuid );
-					if ( !mesh ) { select.value = ""; return; }
-					if ( !mesh.visible ) select.value = ""; else select.value = uuid;
+					droplistUpdate( select, uuid );
 				});
 
 				OutfitManager.update.add( function(){
 					var uuid = OutfitManager.getItem("shoes"); 
 					var select = document.getElementById("shoes-droplist");
-					var mesh = scene.getObjectByProperty( "uuid", uuid );
-					if ( !mesh ) { select.value = ""; return; }
-					if ( !mesh.visible ) select.value = ""; else select.value = uuid;
+					droplistUpdate( select, uuid );
 				});
 
 				OutfitManager.update.add( function(){
 					var uuid = OutfitManager.getItem("glasses"); 
 					var select = document.getElementById("glasses-droplist");
-					var mesh = scene.getObjectByProperty( "uuid", uuid );
-					if ( !mesh ) { select.value = ""; return; }
-					if ( !mesh.visible ) select.value = ""; else select.value = uuid;
+					droplistUpdate( select, uuid );
 				});
 
 				(function( select ){
@@ -426,12 +399,12 @@
 							OutfitManager.update.dispatch();
 							throw "slot "+select.value+" is null!";
 						}
-						var mesh = scene.getObjectByProperty("uuid", uuid );
+						var mesh = getOufitByUUID( uuid );
 						if ( !mesh ) {
 							OutfitManager.update.dispatch();
 							throw "selected mesh not found!";
 						}
-						OutfitManager.update.dispatch( mesh.visible );
+						OutfitManager.update.dispatch( mesh );
 					});
 				})( document.getElementById("outfit-droplist") );
 
@@ -472,9 +445,9 @@
 				OutfitManager.hatDroplistUpdated.add( function(){
 					if ( !OutfitManager.get("hair") ) return; // important!
 					var uuid = OutfitManager.get("hair");
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "hatDroplistUpdated: hair not found!";
-					mesh.visible = false; OutfitManager.setValue("hair", null);
+					scene.remove( mesh ); OutfitManager.setValue("hair", null);
 				});
 
 			//	Show selected hat.
@@ -486,16 +459,22 @@
 						return false; // stop propagetion.
 					}
 
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "hatDroplistUpdated: hat not found!";
-					mesh.visible = true; OutfitManager.setValue("hair", uuid);
-					OutfitManager.update.dispatch( mesh.visible );
+					scene.add( mesh ); OutfitManager.setValue("hair", uuid);
+					OutfitManager.update.dispatch( mesh );
 					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
 				});
 
 				select.value = "";
 				row.appendChild( select );
 				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
 
 				function createOption(name, value){
 					var option = document.createElement("option");
@@ -562,9 +541,9 @@
 				OutfitManager.hairDroplistUpdated.add( function(){
 					if ( !OutfitManager.get("hair") ) return; // important!
 					var uuid = OutfitManager.get("hair");
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "hatDroplistUpdated: hair not found!";
-					mesh.visible = false; OutfitManager.setValue("hair", null);
+					scene.remove( mesh ); OutfitManager.setValue("hair", null);
 				});
 
 			//	Show selected hair.
@@ -576,16 +555,22 @@
 						return false; // stop propagetion.
 					}
 
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "hatDroplistUpdated: hair not found!";
-					mesh.visible = true; OutfitManager.setValue("hair", uuid);
-					OutfitManager.update.dispatch( mesh.visible );
+					scene.add( mesh ); OutfitManager.setValue("hair", uuid);
+					OutfitManager.update.dispatch( mesh );
 					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
 				});
 
 				select.value = "";
 				row.appendChild( select );
 				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
 
 				function createOption(name, value){
 					var option = document.createElement("option");
@@ -632,9 +617,9 @@
 				OutfitManager.upperbodyDroplistUpdated.add( function(){
 					if ( !OutfitManager.get("torso") ) return; // important!
 					var uuid = OutfitManager.get("torso");
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "upperbodyDroplistUpdated: torso not found!";
-					mesh.visible = false; OutfitManager.setValue("torso", null);
+					scene.remove( mesh ); OutfitManager.setValue("torso", null);
 				});
 
 			//	Show selected upperbody.
@@ -646,16 +631,22 @@
 						return false; // stop propagetion.
 					}
 
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "upperbodyDroplistUpdated: torso not found!";
-					mesh.visible = true; OutfitManager.setValue("torso", uuid);
-					OutfitManager.update.dispatch( mesh.visible );
+					scene.add( mesh ); OutfitManager.setValue("torso", uuid);
+					OutfitManager.update.dispatch( mesh );
 					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
 				});
 
 				select.value = "";
 				row.appendChild( select );
 				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
 
 				function createOption(name, value){
 					var option = document.createElement("option");
@@ -703,9 +694,9 @@
 				OutfitManager.lowerbodyDroplistUpdated.add( function(){
 					if ( !OutfitManager.get("legs") ) return; // important!
 					var uuid = OutfitManager.get("legs");
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "lowerbodyDroplistUpdated: legs not found!";
-					mesh.visible = false; OutfitManager.setValue("legs", null);
+					scene.remove( mesh ); OutfitManager.setValue("legs", null);
 				});
 
 			//	Show selected lowerbody.
@@ -717,16 +708,22 @@
 						return false; // stop propagetion.
 					}
 
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "lowerbodyDroplistUpdated: legs not found!";
-					mesh.visible = true; OutfitManager.setValue("legs", uuid);
-					OutfitManager.update.dispatch( mesh.visible );
+					scene.add( mesh ); OutfitManager.setValue("legs", uuid);
+					OutfitManager.update.dispatch( mesh );
 					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
 				});
 
 				select.value = "";
 				row.appendChild( select );
 				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
 
 				function createOption(name, value){
 					var option = document.createElement("option");
@@ -776,9 +773,9 @@
 				OutfitManager.shoesDroplistUpdated.add( function(){
 					if ( !OutfitManager.get("shoes") ) return; // important!
 					var uuid = OutfitManager.get("shoes");
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "shoesDroplistUpdated: shoes not found!";
-					mesh.visible = false; OutfitManager.setValue("shoes", null);
+					scene.remove( mesh ); OutfitManager.setValue("shoes", null);
 				});
 
 			//	Show selected shoes.
@@ -790,16 +787,22 @@
 						return false; // stop propagetion.
 					}
 
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "shoesDroplistUpdated: shoes not found!";
-					mesh.visible = true; OutfitManager.setValue("shoes", uuid);
-					OutfitManager.update.dispatch( mesh.visible );
+					scene.add( mesh ); OutfitManager.setValue("shoes", uuid);
+					OutfitManager.update.dispatch( mesh );
 					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
 				});
 
 				select.value = "";
 				row.appendChild( select );
 				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
 
 				function createOption(name, value){
 					var option = document.createElement("option");
@@ -842,9 +845,9 @@
 				OutfitManager.glassesDroplistUpdated.add( function(){
 					if ( !OutfitManager.get("glasses") ) return; // important!
 					var uuid = OutfitManager.get("glasses");
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "glassesDroplistUpdated: glasses not found!";
-					mesh.visible = false; OutfitManager.setValue("glasses", null);
+					scene.remove( mesh ); OutfitManager.setValue("glasses", null);
 				});
 
 			//	Show selected glasses.
@@ -856,16 +859,22 @@
 						return false; // stop propagetion.
 					}
 
-					var mesh = scene.getObjectByProperty("uuid", uuid );
+					var mesh = getOufitByUUID( uuid );
 					if ( !mesh ) throw "glassesDroplistUpdated: glasses not found!";
-					mesh.visible = true; OutfitManager.setValue("glasses", uuid);
-					OutfitManager.update.dispatch( mesh.visible );
+					scene.add( mesh ); OutfitManager.setValue("glasses", uuid);
+					OutfitManager.update.dispatch( mesh );
 					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
 				});
 
 				select.value = "";
 				row.appendChild( select );
 				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
 
 				function createOption(name, value){
 					var option = document.createElement("option");
@@ -1243,14 +1252,10 @@
 
 			})();
 
-		//	ground.js
-
+		//	Ground Helper.
 			(function(){
-
-			//	Ground Helper.
-				groundHelper = new THREE.GridHelper( 100000, 100, 0x444444, 0x444444 );
+				groundHelper = new THREE.GridHelper( 3e5, 100, 0x444444, 0x444444 );
 				scene.add( groundHelper );
-
 			})();
 
 		</script>
@@ -1267,7 +1272,7 @@
 				group.name = "RLC Female Body";
 
 				outfits = group.children.filter(function(item){
-					return item.isSkinnedMesh;
+					return item.isMesh;
 				}); debugMode && console.log( outfits );
 
 				debugMode && console.log( 
@@ -1293,9 +1298,10 @@
 							child.material = child.material.map( function( item ){
 								var name = item.name;
 								return new THREE.MeshStandardMaterial({
-									name:name, skinning:true, // important!
+									name:name, side:0, skinning:true, // important!
 								});
 							});
+
 							child.material.forEach( function( material ){
 								MaterialManager.addItem( material );
 							});
@@ -1304,8 +1310,9 @@
 
 							var name = child.material.name;
 							child.material = new THREE.MeshStandardMaterial({
-								name:name, skinning:true, // important!
+								name:name, side:0, skinning:true, // important!
 							});
+
 							(function( material ){
 								MaterialManager.addItem( material );
 							})( child.material );
@@ -1328,9 +1335,10 @@
 
 				});
 
-				scene.add( group ); // debug!
+			//	scene.add( group ); // debug!
 				controls.center.y = 30800;
 				camera.lookAt( controls.center );
+				scene.add( group.getObjectByName("HF_Nudebody") );
 
 			}, 
 
@@ -1538,6 +1546,71 @@
 		</script>
 
 		<script>
+/*
+			(function(){
+
+			//	Layer Slot.
+
+				var layers = {
+					skin:      null,
+					tattoo:    null,
+					makeup:    null,
+					clothing:  null,
+					overcoat:  null,
+					bodypaint: null,
+					underwear: null,
+				};
+
+				var tab = TabUI.Outfit.tab;
+				var row = document.createElement("h3");
+				row.textContent = "Layer";
+
+				var select = document.createElement("select");
+				select.id = "layer-droplist";
+				select.style.cssText = "width:180px;color:#000;float:right;"
+					+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+					+ "font-size:20px;margin-left:10px;";
+
+				select.appendChild(createOption("Skin"));
+				select.appendChild(createOption("Tattoo"));
+				select.appendChild(createOption("Makeup"));
+				select.appendChild(createOption("Clothing"));
+				select.appendChild(createOption("Overcoat"));
+				select.appendChild(createOption("Bodypaint"));
+				select.appendChild(createOption("Underwear"));
+
+				select.addEventListener( "change", function(){
+					OutfitManager.currentLayer = this.value;
+				});
+
+				OutfitManager.addLayer = 
+				OutfitManager.setLayerValue = function(key, item){
+					layers[ key.toLowerCase() ] = item;
+				};
+
+				OutfitManager.getLayer = 
+				OutfitManager.getLayerValue = function(){
+					return layers[ select.value ];
+				};
+
+				OutfitManager.getLayers = 
+				OutfitManager.getLayerItems = function(){
+					return layers;
+				};
+
+				select.value = "";
+				row.appendChild( select );
+				tab.appendChild( row );
+
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					option.value = name.toLowerCase();
+					return option;
+				}
+
+			})();
+*/
 
 		</script>
 
