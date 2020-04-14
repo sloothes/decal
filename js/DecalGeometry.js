@@ -111,12 +111,12 @@
 
 			// second, clip the geometry so that it doesn't extend out from the projector
 
-			decalVertices = clipGeometry( decalVertices, plane.set( 1, 0, 0 ) );
-			decalVertices = clipGeometry( decalVertices, plane.set( - 1, 0, 0 ) );
-			decalVertices = clipGeometry( decalVertices, plane.set( 0, 1, 0 ) );
-			decalVertices = clipGeometry( decalVertices, plane.set( 0, - 1, 0 ) );
-			decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, 1 ) );
-			decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, - 1 ) );
+		//	decalVertices = clipGeometry( decalVertices, plane.set( 1, 0, 0 ) );
+		//	decalVertices = clipGeometry( decalVertices, plane.set( - 1, 0, 0 ) );
+		//	decalVertices = clipGeometry( decalVertices, plane.set( 0, 1, 0 ) );
+		//	decalVertices = clipGeometry( decalVertices, plane.set( 0, - 1, 0 ) );
+		//	decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, 1 ) );
+		//	decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, - 1 ) );
 
 			// third, generate final vertices, normals and uvs
 
@@ -126,15 +126,9 @@
 
 				// create texture coordinates (we are still in projector space)
 
-			//	uvs.push(
-			//		0.5 + ( decalVertex.position.x / size.x ),
-			//		0.5 + ( decalVertex.position.y / size.y )
-			//	);
-				
-			// hack: we want flat uv.
 				uvs.push(
-					decalVertex.position.x, 
-					decalVertex.position.y
+					0.5 + ( decalVertex.position.x / size.x ),
+					0.5 + ( decalVertex.position.y / size.y )
 				);
 
 				// transform the vertex back to world space
