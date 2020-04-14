@@ -1308,7 +1308,7 @@
 					var vertex = new THREE.Vector3();
 					var normal = new THREE.Vector3();
 
-				// handle different geometry types.
+					// handle different geometry types
 
 					if ( mesh.geometry.isGeometry ) {
 
@@ -1319,8 +1319,6 @@
 						geometry.copy( mesh.geometry );
 
 					}
-
-				//	console.log( geometry );
 
 					var positionAttribute = geometry.attributes.position;
 					var normalAttribute = geometry.attributes.normal;
@@ -1361,14 +1359,13 @@
 					}
 
 				// second, clip the geometry so that it doesn't extend out from the projector
-				
+
 					decalVertices = clipGeometry( decalVertices, plane.set( 1, 0, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( - 1, 0, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 1, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, - 1, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, 1 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, - 1 ) );
-				
 
 				// third, generate final vertices, normals and uvs
 
@@ -1392,8 +1389,9 @@
 						vertices.push( decalVertex.position.x, decalVertex.position.y, decalVertex.position.z );
 						normals.push( decalVertex.normal.x, decalVertex.normal.y, decalVertex.normal.z );
 
-					}
 
+					}
+					
 				}
 
 				function pushDecalVertex( decalVertices, vertex, normal ) {
@@ -1709,19 +1707,19 @@
 					var loader = new THREE.TextureLoader();
 					loader.setCrossOrigin("anonymous");
 					material = new THREE.MeshBasicMaterial( {
-					//	map: loader.load( "https://i.imgur.com/8eycYxu.png" ),
+						map: loader.load( "https://i.imgur.com/8eycYxu.png" ),
 						normalScale: new THREE.Vector2( 1, 1 ),
 						depthTest: true,
 						depthWrite: false,
 						polygonOffset: true,
 						polygonOffsetFactor: -4,
-						wireframe: true,
+						wireframe: false,
 					});
 
 				//	var mouseHelper;
 					var position = new THREE.Vector3();
 					var orientation = new THREE.Euler();
-					var size = new THREE.Vector3( 50000, 50000, 20000 );
+					var size = new THREE.Vector3( 10000, 10000, 5000 );
 					var up = new THREE.Vector3( 0, 1, 0 );
 
 					var params = {
@@ -1733,7 +1731,7 @@
 						}
 					};
 
-				//	line. important!
+				//	line.
 					var line = (function(){
 						var geometry = new THREE.BufferGeometry();
 						geometry.setFromPoints( [ new THREE.Vector3(), new THREE.Vector3() ] );
@@ -1744,25 +1742,21 @@
 
 					raycaster = new THREE.Raycaster();
 
-				//	mouse helper. important!
-					(function(){
-						mouseHelper = new THREE.Mesh( 
-							new THREE.BoxBufferGeometry( 100, 100, 5000 ), 
-							new THREE.MeshNormalMaterial({visible:true}) 
-						);
-						scene.add( mouseHelper );
-					})();
+				//	mouse helper.
+					mouseHelper = new THREE.Mesh( 
+						new THREE.BoxBufferGeometry( 100, 100, 5000 ), 
+						new THREE.MeshNormalMaterial({visible:true}) 
+					);
+					scene.add( mouseHelper );
 
 				//	decal helper.
-					(function(size){
-						var decalBox = new THREE.Mesh( 
-							new THREE.BoxBufferGeometry( size.x, size.y, size.z ), 
-							new THREE.MeshBasicMaterial({visible:false}) 
-						);
-						scene.add( decalBox );
-						decalHelper = new THREE.EdgesHelper( decalBox, 0xffff00 );
-						scene.add( decalHelper ); scene.remove( decalBox );
-					})(size);
+					var decalBox = new THREE.Mesh( 
+						new THREE.BoxBufferGeometry( 10000, 10000, 5000 ), 
+						new THREE.MeshBasicMaterial({visible:false}) 
+					);
+					scene.add( decalBox );
+					decalHelper = new THREE.EdgesHelper( decalBox, 0xffff00 );
+					scene.add( decalHelper ); scene.remove( decalBox );
 
 					var moved = false;
 
@@ -1824,9 +1818,9 @@
 
 						position.copy( intersection.point );
 						orientation.copy( mouseHelper.rotation );
-					//	Overwrite position, orientation.
-						position = new THREE.Vector3(0, intersection.point.y, 0);
-						orientation = new THREE.Euler();
+
+					//	position = new THREE.Vector3(0, intersection.point.y, intersection.point.z );
+					//	orientation = new THREE.Euler();
 					//	debugMode && console.log( intersection );
 
 					//	if ( params.rotate ) orientation.z = Math.random() * 2 * Math.PI;

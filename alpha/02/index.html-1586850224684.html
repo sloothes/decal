@@ -1308,7 +1308,7 @@
 					var vertex = new THREE.Vector3();
 					var normal = new THREE.Vector3();
 
-				// handle different geometry types.
+					// handle different geometry types
 
 					if ( mesh.geometry.isGeometry ) {
 
@@ -1319,8 +1319,6 @@
 						geometry.copy( mesh.geometry );
 
 					}
-
-				//	console.log( geometry );
 
 					var positionAttribute = geometry.attributes.position;
 					var normalAttribute = geometry.attributes.normal;
@@ -1361,14 +1359,14 @@
 					}
 
 				// second, clip the geometry so that it doesn't extend out from the projector
-				
+
 					decalVertices = clipGeometry( decalVertices, plane.set( 1, 0, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( - 1, 0, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 1, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, - 1, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, 1 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, - 1 ) );
-				
+
 
 				// third, generate final vertices, normals and uvs
 
@@ -1706,10 +1704,7 @@
 						normal: new THREE.Vector3()
 					};
 
-					var loader = new THREE.TextureLoader();
-					loader.setCrossOrigin("anonymous");
-					material = new THREE.MeshBasicMaterial( {
-					//	map: loader.load( "https://i.imgur.com/8eycYxu.png" ),
+					var material = new THREE.MeshBasicMaterial( {
 						normalScale: new THREE.Vector2( 1, 1 ),
 						depthTest: true,
 						depthWrite: false,
@@ -1721,7 +1716,7 @@
 				//	var mouseHelper;
 					var position = new THREE.Vector3();
 					var orientation = new THREE.Euler();
-					var size = new THREE.Vector3( 50000, 50000, 20000 );
+					var size = new THREE.Vector3( 10, 10, 10 );
 					var up = new THREE.Vector3( 0, 1, 0 );
 
 					var params = {
@@ -1733,36 +1728,22 @@
 						}
 					};
 
-				//	line. important!
-					var line = (function(){
-						var geometry = new THREE.BufferGeometry();
-						geometry.setFromPoints( [ new THREE.Vector3(), new THREE.Vector3() ] );
-						var line = new THREE.Line( geometry, new THREE.LineBasicMaterial( { linewidth: 4 } ) );
-						scene.add( line );
-						return line;
-					})();
+					var geometry = new THREE.BufferGeometry();
+					geometry.setFromPoints( [ new THREE.Vector3(), new THREE.Vector3() ] );
+
+					line = new THREE.Line( geometry, new THREE.LineBasicMaterial( { linewidth: 4 } ) );
+					scene.add( line );
 
 					raycaster = new THREE.Raycaster();
 
-				//	mouse helper. important!
-					(function(){
-						mouseHelper = new THREE.Mesh( 
-							new THREE.BoxBufferGeometry( 100, 100, 5000 ), 
-							new THREE.MeshNormalMaterial({visible:true}) 
-						);
-						scene.add( mouseHelper );
-					})();
+				//	mouse helper.
+					mouseHelper = new THREE.Mesh( 
+						new THREE.BoxBufferGeometry( 100, 100, 5000 ), 
+						new THREE.MeshNormalMaterial() 
+					);
 
-				//	decal helper.
-					(function(size){
-						var decalBox = new THREE.Mesh( 
-							new THREE.BoxBufferGeometry( size.x, size.y, size.z ), 
-							new THREE.MeshBasicMaterial({visible:false}) 
-						);
-						scene.add( decalBox );
-						decalHelper = new THREE.EdgesHelper( decalBox, 0xffff00 );
-						scene.add( decalHelper ); scene.remove( decalBox );
-					})(size);
+					scene.add( mouseHelper );
+					mouseHelper.visible = true;
 
 					var moved = false;
 
@@ -1771,13 +1752,24 @@
 
 					renderer.domElement.addEventListener( "mouseup", function() {
 						checkIntersection(); 
-						if ( !moved ) shoot( material.clone() );
-					//	if ( !moved && intersection.intersects ) shoot( material.clone() );
+						if ( !moved && intersection.intersects ) 
+							shoot( material.clone() );
 					});
 
 					renderer.domElement.addEventListener( "mousemove", function(){
 						checkIntersection( mesh );
 					});
+
+/*
+					function onMouseMove( event ) {
+
+						mouse.x = ( x / window.innerWidth ) * 2 - 1;
+						mouse.y = - ( y / window.innerHeight ) * 2 + 1;
+
+						checkIntersection();
+
+					}
+*/
 
 					function checkIntersection( mesh ) {
 
@@ -1785,13 +1777,12 @@
 
 						raycaster.setFromCamera( mouse, camera );
 
-						intersects = raycaster.intersectObjects( [ mesh ] );
+						var intersects = raycaster.intersectObjects( [ mesh ] );
 
 						if ( intersects.length > 0 ) {
 
 							var p = intersects[ 0 ].point;
 							mouseHelper.position.copy( p );
-							decalHelper.position.set( p.x, p.y, p.z );
 							intersection.point.copy( p );
 
 							var n = intersects[ 0 ].face.normal.clone();
@@ -1801,7 +1792,6 @@
 
 							intersection.normal.copy( intersects[ 0 ].face.normal );
 							mouseHelper.lookAt( n );
-							decalHelper.lookAt( n );
 
 							var positions = line.geometry.attributes.position;
 							positions.setXYZ( 0, p.x, p.y, p.z );
@@ -1824,25 +1814,23 @@
 
 						position.copy( intersection.point );
 						orientation.copy( mouseHelper.rotation );
-					//	Overwrite position, orientation.
-						position = new THREE.Vector3(0, intersection.point.y, 0);
-						orientation = new THREE.Euler();
-					//	debugMode && console.log( intersection );
 
 					//	if ( params.rotate ) orientation.z = Math.random() * 2 * Math.PI;
 
-					//	size.set( 10000, 10000, 5000 );
+						var scale = 10000;
 					//	var scale = params.minScale + Math.random() * ( params.maxScale - params.minScale );
-
-						var geometry = new THREE.DecalGeometry( mesh, position, orientation, size );
+						size.set( scale, scale, scale );
 
 					//	var material = material.clone();
 					//	material.color.setHex( Math.random() * 0xffffff );
 
-						var decal = new THREE.Mesh( geometry, material );
-						decals.push( decal ); scene.add( decal );
+						var geometry = new THREE.DecalGeometry( mesh, position, orientation, size );
+						var m = new THREE.Mesh( geometry, material );
 
-					//	debug.
+						decals.push( m );
+						scene.add( m );
+
+					//	Decal debug.
 
 						(function( geometry){
 							var viewer = document.getElementById("decal-viewer");

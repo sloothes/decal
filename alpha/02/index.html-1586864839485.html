@@ -1305,6 +1305,7 @@
 					var geometry = new THREE.BufferGeometry();
 					var decalVertices = [];
 
+					var uv = new THREE.Vector2(); 
 					var vertex = new THREE.Vector3();
 					var normal = new THREE.Vector3();
 
@@ -1320,10 +1321,11 @@
 
 					}
 
-				//	console.log( geometry );
+					console.log( geometry );
 
 					var positionAttribute = geometry.attributes.position;
 					var normalAttribute = geometry.attributes.normal;
+					var uvAttribute = geometry.attributes.uv;
 
 				// first, create an array of 'DecalVertex' objects
 				// three consecutive 'DecalVertex' objects represent a single face
@@ -1340,8 +1342,9 @@
 
 							vertex.fromBufferAttribute( positionAttribute, index.getX( i ) );
 							normal.fromBufferAttribute( normalAttribute, index.getX( i ) );
+							uv.fromBufferAttribute( uvAttribute, index.getX( i ) ); // debug!
 
-							pushDecalVertex( decalVertices, vertex, normal );
+							pushDecalVertex( decalVertices, vertex, normal, uv );
 
 						}
 
@@ -1353,22 +1356,22 @@
 
 							vertex.fromBufferAttribute( positionAttribute, i );
 							normal.fromBufferAttribute( normalAttribute, i );
+							uv.fromBufferAttribute( uvAttribute, i ); // debug!
 
-							pushDecalVertex( decalVertices, vertex, normal );
+							pushDecalVertex( decalVertices, vertex, normal, uv );
 
 						}
 
 					}
 
 				// second, clip the geometry so that it doesn't extend out from the projector
-				
+
 					decalVertices = clipGeometry( decalVertices, plane.set( 1, 0, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( - 1, 0, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 1, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, - 1, 0 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, 1 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, - 1 ) );
-				
 
 				// third, generate final vertices, normals and uvs
 
@@ -1378,10 +1381,10 @@
 
 					// create texture coordinates (we are still in projector space)
 
-						uvs.push(
-							0.5 + ( decalVertex.position.x / size.x ),
-							0.5 + ( decalVertex.position.y / size.y )
-						);
+					//	uvs.push(
+					//		0.5 + ( decalVertex.position.x / size.x ),
+					//		0.5 + ( decalVertex.position.y / size.y )
+					//	);
 
 					// transform the vertex back to world space
 
@@ -1391,19 +1394,20 @@
 
 						vertices.push( decalVertex.position.x, decalVertex.position.y, decalVertex.position.z );
 						normals.push( decalVertex.normal.x, decalVertex.normal.y, decalVertex.normal.z );
+						uvs.push( decalVertex.uv.x, decalVertex.uv.y );
 
 					}
-
+					
 				}
 
-				function pushDecalVertex( decalVertices, vertex, normal ) {
+				function pushDecalVertex( decalVertices, vertex, normal, uv ) {
 
 				// transform the vertex to world space, then to projector space.
 
 					vertex.applyMatrix4( mesh.matrixWorld );
 					vertex.applyMatrix4( projectorMatrixInverse );
 
-					decalVertices.push( new DecalVertex( vertex.clone(), normal.clone() ) );
+					decalVertices.push( new DecalVertex( vertex.clone(), normal.clone(), uv.clone() ) );
 
 				}
 
@@ -1572,6 +1576,10 @@
 							v0.normal.x + s0 * ( v1.normal.x - v0.normal.x ),
 							v0.normal.y + s0 * ( v1.normal.y - v0.normal.y ),
 							v0.normal.z + s0 * ( v1.normal.z - v0.normal.z )
+						),
+						new THREE.Vector2(
+							v0.uv.x + s0 * ( v1.uv.x - v0.uv.x ),
+							v0.uv.y + s0 * ( v1.uv.y - v0.uv.y ),
 						)
 					);
 
@@ -1589,16 +1597,17 @@
 
 		// helper.
 
-			function DecalVertex( position, normal ) {
+			function DecalVertex( position, normal, uv ) {
 
 				this.position = position;
 				this.normal = normal;
+				this.uv = uv;
 
 			}
 
 			DecalVertex.prototype.clone = function () {
 
-				return new DecalVertex( this.position.clone(), this.normal.clone() );
+				return new DecalVertex( this.position.clone(), this.normal.clone(), this.uv.clone() );
 
 			};
 
@@ -1709,19 +1718,19 @@
 					var loader = new THREE.TextureLoader();
 					loader.setCrossOrigin("anonymous");
 					material = new THREE.MeshBasicMaterial( {
-					//	map: loader.load( "https://i.imgur.com/8eycYxu.png" ),
+						map: loader.load( "https://i.imgur.com/8eycYxu.png" ),
 						normalScale: new THREE.Vector2( 1, 1 ),
 						depthTest: true,
 						depthWrite: false,
 						polygonOffset: true,
 						polygonOffsetFactor: -4,
-						wireframe: true,
+						wireframe: false,
 					});
 
 				//	var mouseHelper;
 					var position = new THREE.Vector3();
 					var orientation = new THREE.Euler();
-					var size = new THREE.Vector3( 50000, 50000, 20000 );
+					var size = new THREE.Vector3( 10000, 10000, 5000 );
 					var up = new THREE.Vector3( 0, 1, 0 );
 
 					var params = {
@@ -1733,7 +1742,7 @@
 						}
 					};
 
-				//	line. important!
+				//	line.
 					var line = (function(){
 						var geometry = new THREE.BufferGeometry();
 						geometry.setFromPoints( [ new THREE.Vector3(), new THREE.Vector3() ] );
@@ -1744,25 +1753,21 @@
 
 					raycaster = new THREE.Raycaster();
 
-				//	mouse helper. important!
-					(function(){
-						mouseHelper = new THREE.Mesh( 
-							new THREE.BoxBufferGeometry( 100, 100, 5000 ), 
-							new THREE.MeshNormalMaterial({visible:true}) 
-						);
-						scene.add( mouseHelper );
-					})();
+				//	mouse helper.
+					mouseHelper = new THREE.Mesh( 
+						new THREE.BoxBufferGeometry( 100, 100, 5000 ), 
+						new THREE.MeshNormalMaterial({visible:true}) 
+					);
+					scene.add( mouseHelper );
 
 				//	decal helper.
-					(function(size){
-						var decalBox = new THREE.Mesh( 
-							new THREE.BoxBufferGeometry( size.x, size.y, size.z ), 
-							new THREE.MeshBasicMaterial({visible:false}) 
-						);
-						scene.add( decalBox );
-						decalHelper = new THREE.EdgesHelper( decalBox, 0xffff00 );
-						scene.add( decalHelper ); scene.remove( decalBox );
-					})(size);
+					var decalBox = new THREE.Mesh( 
+						new THREE.BoxBufferGeometry( 10000, 10000, 5000 ), 
+						new THREE.MeshBasicMaterial({visible:false}) 
+					);
+					scene.add( decalBox );
+					decalHelper = new THREE.EdgesHelper( decalBox, 0xffff00 );
+					scene.add( decalHelper ); scene.remove( decalBox );
 
 					var moved = false;
 
@@ -1824,9 +1829,9 @@
 
 						position.copy( intersection.point );
 						orientation.copy( mouseHelper.rotation );
-					//	Overwrite position, orientation.
-						position = new THREE.Vector3(0, intersection.point.y, 0);
-						orientation = new THREE.Euler();
+
+					//	position = new THREE.Vector3(0, intersection.point.y, intersection.point.z );
+					//	orientation = new THREE.Euler();
 					//	debugMode && console.log( intersection );
 
 					//	if ( params.rotate ) orientation.z = Math.random() * 2 * Math.PI;
