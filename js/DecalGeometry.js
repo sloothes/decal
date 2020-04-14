@@ -126,9 +126,15 @@
 
 				// create texture coordinates (we are still in projector space)
 
+			//	uvs.push(
+			//		0.5 + ( decalVertex.position.x / size.x ),
+			//		0.5 + ( decalVertex.position.y / size.y )
+			//	);
+				
+			// hack: we want flat uv.
 				uvs.push(
-					0.5 + ( decalVertex.position.x / size.x ),
-					0.5 + ( decalVertex.position.y / size.y )
+					decalVertex.position.x, 
+					decalVertex.position.y
 				);
 
 				// transform the vertex back to world space
