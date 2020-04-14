@@ -111,12 +111,12 @@
 
 			// second, clip the geometry so that it doesn't extend out from the projector
 
-		//	decalVertices = clipGeometry( decalVertices, plane.set( 1, 0, 0 ) );
-		//	decalVertices = clipGeometry( decalVertices, plane.set( - 1, 0, 0 ) );
-		//	decalVertices = clipGeometry( decalVertices, plane.set( 0, 1, 0 ) );
-		//	decalVertices = clipGeometry( decalVertices, plane.set( 0, - 1, 0 ) );
-		//	decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, 1 ) );
-		//	decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, - 1 ) );
+			decalVertices = clipGeometry( decalVertices, plane.set( 1, 0, 0 ) );
+			decalVertices = clipGeometry( decalVertices, plane.set( - 1, 0, 0 ) );
+			decalVertices = clipGeometry( decalVertices, plane.set( 0, 1, 0 ) );
+			decalVertices = clipGeometry( decalVertices, plane.set( 0, - 1, 0 ) );
+			decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, 1 ) );
+			decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, - 1 ) );
 
 			// third, generate final vertices, normals and uvs
 
