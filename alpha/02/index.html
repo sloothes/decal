@@ -92,6 +92,7 @@
 		<script src="/decal/js/EditorControls.js"></script>
 		<script src="/decal/js/SubdivisionModifier.js"></script>
 		<script src="/decal/js/DecalGeometry.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/OBJLoader.js"></script>
 		<script src="/threejs/r96/examples/js/loaders/GLTFLoader.js"></script>
 		<script src="/threejs/r96/examples/js/exporters/GLTFExporter.js"></script>
 		<script src="/threejs/r96/examples/js/exporters/STLExporter.js"></script>
@@ -184,10 +185,6 @@
 			(function(){
 
 				var tab = TabUI.Decal.tab;
-
-
-
-
 
 			})();
 
@@ -1262,13 +1259,17 @@
 
 		<script>
 
+
+		</script>
+
+		<script>
+
 		//	Avatar loader.
 
-			var loader = new THREE.FBXLoader();
-			loader.load( "/decal/outfit/RLC_FemaleRigged_2011v1.fbx", function( fbx ){
+			var loader = new THREE.OBJLoader();
+			loader.load( "/decal/outfit/RLC_FemaleDesignKit_2011v1.obj", function( group ){
 
-			//	fbx is THREE.Group.
-				var group = fbx; 
+			//	group is THREE.Group.
 				group.name = "RLC Female Body";
 
 				outfits = group.children.filter(function(item){
@@ -1339,6 +1340,166 @@
 				controls.center.y = 30800;
 				camera.lookAt( controls.center );
 				scene.add( group.getObjectByName("HF_Nudebody") );
+
+			//	Decals.
+
+				(function( mesh ){
+				//	debugMode && console.log( "decals:", mesh );
+
+					var decal, raycaster;
+					var intersection = {
+						intersects: false,
+						point: new THREE.Vector3(),
+						normal: new THREE.Vector3()
+					};
+
+					var material = new THREE.MeshPhongMaterial( {
+						specular: 0x444444,
+						normalScale: new THREE.Vector2( 1, 1 ),
+						shininess: 30,
+						transparent: true,
+						depthTest: true,
+						depthWrite: false,
+						polygonOffset: true,
+						polygonOffsetFactor: -4,
+						wireframe: false,
+					});
+
+					decals = [];
+				//	var mouseHelper;
+					var position = new THREE.Vector3();
+					var orientation = new THREE.Euler();
+					var size = new THREE.Vector3( 10, 10, 10 );
+					var up = new THREE.Vector3( 0, 1, 0 );
+
+					var params = {
+						minScale: 10000,
+						maxScale: 20000,
+						rotate: false,
+						clear: function() {
+							removeDecals();
+						}
+					};
+
+					var geometry = new THREE.BufferGeometry();
+					geometry.setFromPoints( [ new THREE.Vector3(), new THREE.Vector3() ] );
+
+					line = new THREE.Line( geometry, new THREE.LineBasicMaterial( { linewidth: 4 } ) );
+					scene.add( line );
+
+					raycaster = new THREE.Raycaster();
+
+				//	mouse helper.
+					mouseHelper = new THREE.Mesh( 
+						new THREE.BoxBufferGeometry( 100, 100, 10000 ), 
+						new THREE.MeshNormalMaterial() 
+					);
+
+					scene.add( mouseHelper );
+					mouseHelper.visible = true;
+
+					var moved = false;
+
+					controls.addEventListener( "change", function() { moved = true; });
+					renderer.domElement.addEventListener( "mousedown", function () { moved = false; }, false );
+					renderer.domElement.addEventListener( "mouseup", function() {
+						checkIntersection(); if ( !moved && intersection.intersects ) shoot();
+					});
+
+					renderer.domElement.addEventListener( "mousemove", checkIntersection );
+/*
+					function onMouseMove( event ) {
+
+						var x, y;
+
+						if ( event.changedTouches ) {
+
+							x = event.changedTouches[ 0 ].pageX;
+							y = event.changedTouches[ 0 ].pageY;
+
+						} else {
+
+							x = event.clientX;
+							y = event.clientY;
+
+						}
+
+						mouse.x = ( x / window.innerWidth ) * 2 - 1;
+						mouse.y = - ( y / window.innerHeight ) * 2 + 1;
+
+						checkIntersection();
+
+					}
+*/
+					function checkIntersection() {
+						debugMode && console.log( mesh )
+
+						if ( ! mesh ) return;
+
+						raycaster.setFromCamera( mouse, camera );
+
+						var intersects = raycaster.intersectObjects( [ mesh ] );
+
+						if ( intersects.length > 0 ) {
+
+							var p = intersects[ 0 ].point;
+							mouseHelper.position.copy( p );
+							intersection.point.copy( p );
+
+							var n = intersects[ 0 ].face.normal.clone();
+							n.transformDirection( mesh.matrixWorld );
+							n.multiplyScalar( 10 );
+							n.add( intersects[ 0 ].point );
+
+							intersection.normal.copy( intersects[ 0 ].face.normal );
+							mouseHelper.lookAt( n );
+
+							var positions = line.geometry.attributes.position;
+							positions.setXYZ( 0, p.x, p.y, p.z );
+							positions.setXYZ( 1, n.x, n.y, n.z );
+							positions.needsUpdate = true;
+
+							intersection.intersects = true;
+
+						} else {
+
+							intersection.intersects = false;
+
+						}
+
+					}
+
+					function shoot() {
+
+						position.copy( intersection.point );
+						orientation.copy( mouseHelper.rotation );
+
+						if ( params.rotate ) orientation.z = Math.random() * 2 * Math.PI;
+
+						var scale = params.minScale + Math.random() * ( params.maxScale - params.minScale );
+						size.set( scale, scale, scale );
+
+						var material = decalMaterial.clone();
+						material.color.setHex( Math.random() * 0xffffff );
+
+						var m = new THREE.Mesh( new THREE.DecalGeometry( mesh, position, orientation, size ), material );
+
+						decals.push( m );
+						scene.add( m );
+
+					}
+
+					function removeDecals() {
+
+						decals.forEach( function( d ) {
+							scene.remove( d );
+						});
+
+						decals = [];
+
+					}
+
+				})( scene.getObjectByName("HF_Nudebody") );
 
 			}, 
 
