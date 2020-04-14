@@ -180,18 +180,6 @@
 
 		<script>
 
-		//	Decal tab.
-
-			(function(){
-
-				var tab = TabUI.Decal.tab;
-
-			})();
-
-		</script>
-
-		<script>
-
 		//	Outfit tab.
 
 			(function(){
@@ -1266,8 +1254,9 @@
 
 		//	Avatar loader.
 
+		//	Important: Decal does not work with skinned mesh.
 			var loader = new THREE.OBJLoader();
-			loader.load( "/decal/outfit/RLC_FemaleDesignKit_2011v1.obj", function( group ){
+			loader.load( "/decal/outfit/RLC_FemaleDecal_2011v1.obj", function( group ){
 
 			//	group is THREE.Group.
 				group.name = "RLC Female Body";
@@ -1280,7 +1269,7 @@
 					outfits.map(function(item){return item.name;})
 				);
 
-				var s = 1; group.scale.set(s,s,s); // important!
+				var s = 100; group.scale.set(s,s,s); // important!
 				debugMode && console.log( group );
 
 				group.traverse( function( child ){
@@ -1299,7 +1288,7 @@
 							child.material = child.material.map( function( item ){
 								var name = item.name;
 								return new THREE.MeshStandardMaterial({
-									name:name, side:0, skinning:true, // important!
+									name:name, side:0, skinning:false, // important!
 								});
 							});
 
@@ -1311,7 +1300,7 @@
 
 							var name = child.material.name;
 							child.material = new THREE.MeshStandardMaterial({
-								name:name, side:0, skinning:true, // important!
+								name:name, side:0, skinning:false, // important!
 							});
 
 							(function( material ){
@@ -1339,14 +1328,17 @@
 			//	scene.add( group ); // debug!
 				controls.center.y = 30800;
 				camera.lookAt( controls.center );
-				scene.add( group.getObjectByName("HF_Nudebody") );
+				scene.add( group.getObjectByName("HF_Nudebody_HF_Nudebody") );
 
-			//	Decals.
+			//	Decal does not work with skinned mesh.
 
 				(function( mesh ){
 				//	debugMode && console.log( "decals:", mesh );
 
-					var decal, raycaster;
+					decals = [];
+
+				//	var decal, raycaster;
+
 					var intersection = {
 						intersects: false,
 						point: new THREE.Vector3(),
@@ -1362,10 +1354,9 @@
 						depthWrite: false,
 						polygonOffset: true,
 						polygonOffsetFactor: -4,
-						wireframe: false,
+						wireframe: true,
 					});
 
-					decals = [];
 				//	var mouseHelper;
 					var position = new THREE.Vector3();
 					var orientation = new THREE.Euler();
@@ -1391,7 +1382,7 @@
 
 				//	mouse helper.
 					mouseHelper = new THREE.Mesh( 
-						new THREE.BoxBufferGeometry( 100, 100, 10000 ), 
+						new THREE.BoxBufferGeometry( 10, 10, 10000 ), 
 						new THREE.MeshNormalMaterial() 
 					);
 
@@ -1403,26 +1394,13 @@
 					controls.addEventListener( "change", function() { moved = true; });
 					renderer.domElement.addEventListener( "mousedown", function () { moved = false; }, false );
 					renderer.domElement.addEventListener( "mouseup", function() {
-						checkIntersection(); if ( !moved && intersection.intersects ) shoot();
+						checkIntersection(); 
+						if ( !moved && intersection.intersects ) 
+							shoot( material.clone() );
 					});
 
-					renderer.domElement.addEventListener( "mousemove", checkIntersection );
 /*
 					function onMouseMove( event ) {
-
-						var x, y;
-
-						if ( event.changedTouches ) {
-
-							x = event.changedTouches[ 0 ].pageX;
-							y = event.changedTouches[ 0 ].pageY;
-
-						} else {
-
-							x = event.clientX;
-							y = event.clientY;
-
-						}
 
 						mouse.x = ( x / window.innerWidth ) * 2 - 1;
 						mouse.y = - ( y / window.innerHeight ) * 2 + 1;
@@ -1431,8 +1409,12 @@
 
 					}
 */
-					function checkIntersection() {
-						debugMode && console.log( mesh )
+
+					renderer.domElement.addEventListener( "mousemove", function(){
+						checkIntersection( mesh );
+					});
+
+					function checkIntersection( mesh ) {
 
 						if ( ! mesh ) return;
 
@@ -1469,23 +1451,37 @@
 
 					}
 
-					function shoot() {
+					function shoot( material ) {
 
 						position.copy( intersection.point );
 						orientation.copy( mouseHelper.rotation );
 
-						if ( params.rotate ) orientation.z = Math.random() * 2 * Math.PI;
+					//	if ( params.rotate ) orientation.z = Math.random() * 2 * Math.PI;
 
-						var scale = params.minScale + Math.random() * ( params.maxScale - params.minScale );
+						var scale = 10000;
+					//	var scale = params.minScale + Math.random() * ( params.maxScale - params.minScale );
 						size.set( scale, scale, scale );
 
-						var material = decalMaterial.clone();
+					//	var material = material.clone();
 						material.color.setHex( Math.random() * 0xffffff );
 
-						var m = new THREE.Mesh( new THREE.DecalGeometry( mesh, position, orientation, size ), material );
+						var geometry = new THREE.DecalGeometry( mesh, position, orientation, size );
+						var m = new THREE.Mesh( geometry, material );
 
 						decals.push( m );
 						scene.add( m );
+
+					//	Decal UV.
+
+						(function( geometry){
+							var viewer = document.getElementById("decal-viewer");
+							if ( !viewer ) return;
+							while ( viewer.children.length ){
+								viewer.firstChild.remove();
+							}
+							var canvas = THREE.UVsDebug(geometry, 300);
+							viewer.appendChild( canvas );
+						})( geometry );
 
 					}
 
@@ -1499,7 +1495,7 @@
 
 					}
 
-				})( scene.getObjectByName("HF_Nudebody") );
+				})( scene.getObjectByName("HF_Nudebody_HF_Nudebody") );
 
 			}, 
 
@@ -1512,6 +1508,48 @@
 			function onError( err ){
 				console.error(err);
 			});
+
+		</script>
+
+		<script>
+
+		//	Decal tab.
+
+			(function(){
+
+				var tab = TabUI.Decal.tab;
+
+			//	Important: Decal does not work with skinned mesh.
+
+				var viewer = document.createElement("div");
+				viewer.id = "decal-viewer";
+				viewer.style.cssText = "width:100%;height:300px;text-align:center;margin-bottom:20px;";
+				tab.appendChild( viewer );
+				tab.appendChild( removeButton() );
+
+				function removeButton(){
+					var row = document.createElement("div");
+					row.style.cssText = "margin:10px 15px;height:40px;text-align:center;";
+
+					var button = document.createElement("div");
+					button.id = "clear-decals";
+					button.textContent = "Clear decals";
+					button.style.cssText = "min-width:60%;width:fit-content;height:40px;font-size:large;";
+					button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+					button.addEventListener( "click", function removeDecals() {
+						decals.forEach( function( d ) { 
+							scene.remove( d ); 
+						});
+						decals = [];
+					});
+
+					row.appendChild( button );
+					return row;
+				}
+					
+
+			})();
 
 		</script>
 

@@ -144,6 +144,7 @@ THREE.UVsDebug = function ( geometry, size ) {
 		// calculate center of face
 
 		a.divideScalar( uvs.length );
+/*
 
 		// label the face number
 
@@ -163,7 +164,6 @@ THREE.UVsDebug = function ( geometry, size ) {
 
 		ctx.font = '8pt Arial bold';
 		ctx.fillStyle = 'rgba( 0, 0, 0, 1.0 )';
-/*
 	// label uv edge orders
 
 		for ( j = 0, jl = uvs.length; j < jl; j ++ ) {
