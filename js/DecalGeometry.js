@@ -354,4 +354,4 @@
 
 	THREE.DecalGeometry = DecalGeometry;
 
-} )();
+})();
