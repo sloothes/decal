@@ -1371,9 +1371,6 @@
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, 1 ) );
 					decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, - 1 ) );
 					
-					console.log( decalVertices );
-				
-
 				// third, generate final vertices, normals and uvs
 
 					for ( i = 0; i < decalVertices.length; i ++ ) {
@@ -1782,7 +1779,7 @@
 
 					renderer.domElement.addEventListener( "mouseup", function() {
 						checkIntersection(); 
-						if ( !moved ) shoot( material.clone() );
+						if ( !moved ) shoot( material );
 					//	if ( !moved && intersection.intersects ) shoot( material.clone() );
 					});
 
@@ -1939,37 +1936,88 @@
 
 			(function(){
 
-				var tab = TabUI.Decal.tab;
-
 			//	Important: Decal does not work with skinned mesh.
+
+				var tab = TabUI.Decal.tab;
 
 				var viewer = document.createElement("div");
 				viewer.id = "decal-viewer";
 				viewer.style.cssText = "width:100%;height:300px;text-align:center;margin-bottom:20px;";
 				tab.appendChild( viewer );
-				tab.appendChild( removeButton() );
 
-				function removeButton(){
+				(function(){
+
 					var row = document.createElement("div");
 					row.style.cssText = "margin:10px 15px;height:40px;text-align:center;";
+					row.appendChild( removeButton() );
+					tab.appendChild( row );
 
-					var button = document.createElement("div");
-					button.id = "clear-decals";
-					button.textContent = "Clear decals";
-					button.style.cssText = "min-width:60%;width:fit-content;height:40px;font-size:large;";
-					button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+					function removeButton(){
 
-					button.addEventListener( "click", function removeDecals() {
-						decals.forEach( function( d ) { 
-							scene.remove( d ); 
+						var button = document.createElement("div");
+						button.id = "clear-decals";
+						button.textContent = "Clear decals";
+						button.style.cssText = "min-width:60%;width:fit-content;height:40px;font-size:large;";
+						button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+						button.addEventListener( "click", function removeDecals() {
+							decals.forEach( function( d ) { 
+								scene.remove( d ); 
+							});
+							decals = [];
 						});
-						decals = [];
-					});
 
-					row.appendChild( button );
-					return row;
+						return button;
+					}
+
+				})();
+
+				(function(){
+
+					var row = document.createElement("div");
+					row.style.cssText = "margin:10px 15px;height:40px;text-align:center;";
+					row.appendChild( exportButton() );
+					tab.appendChild( row );
+
+					function exportButton(){
+
+						var button = document.createElement("div");
+						button.id = "export-decal";
+						button.textContent = "Save decal";
+						button.style.cssText = "min-width:60%;width:fit-content;height:40px;font-size:large;";
+						button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+						button.addEventListener( "click", function removeDecals() {
+							if ( !decal ) return;
+							var name = "decal-mesh";
+							var exporter = new THREE.OBJExporter();
+							saveString( exporter.parse( decal ), name+".obj" );
+						});
+
+						return button;
+					}
+
+				})();
+
+				function saveString( text, filename ) {
+					save( new Blob( [ text ], { type: "text/plain" } ), filename );
 				}
-					
+
+				function saveArrayBuffer( buffer, filename ) {
+					save( new Blob( [ buffer ], { type: "application/octet-stream" } ), filename );
+				}
+
+				function save( blob, filename ) {
+					var link = document.createElement( "a" );
+					link.download = filename;
+					link.href = URL.createObjectURL( blob );
+					link.addEventListener( "click", function(){
+						setTimeout( function(){
+							URL.revokeObjectURL( link.href );
+						});
+					});
+					link.click();
+				}
 
 			})();
 
