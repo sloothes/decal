@@ -1,0 +1,2426 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+
+		<title> Decal (alpha 0.3)</title>
+
+		<meta charset="utf-8">
+		<meta name="generator" content="Three.js Editor">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+		<link rel="stylesheet" href="/css/joystick.css">
+		<link rel="stylesheet" href="/css/bootstrap.min.css">
+		<link rel="stylesheet" href="/css/bootbox-dialoges.css">
+		<link rel="stylesheet" href="/css/jcrop.css">
+
+		<script src="/js/watch.js"></script>
+		<script src="/js/jquery.min.js"></script> 
+		<script src="/js/system.min.js"></script>
+		<script src="/js/signals.min.js"></script>
+		<script src="/js/inflate.min.js"></script>
+		<script src="/js/zangodb.min.js"></script>
+		<script src="/js/bootstrap.min.js"></script>
+		<script src="/js/hold-event.min.js"></script>
+		<script src="/js/jcrop.js"></script>
+
+		<style>
+
+
+			body {
+				margin: 0px;
+				font-size: 13px;
+				font-family: sans-serif;
+				background-repeat: repeat;
+				background-image: url("https://i.imgur.com/rnZZU0i.png") !important;
+				overflow: hidden;
+			}
+
+			#loading-bar {
+				width:100%;
+				height:100%;
+				top:0; left:0;
+				position:fixed;
+				display:flex;
+				align-items:center;
+				justify-content:center;
+			}
+
+			.middle > * {
+				top:0; 
+				left:0;
+				right:0;
+				bottom:0;
+				margin:auto;
+				position:absolute;
+			}
+
+			#joystick1 {
+				right: calc(40px + 370px);
+			}
+			
+			#jumpButton {
+				right: calc(105px + 370px);
+			}
+
+			.btn-matcap,
+			.btn-terrain {
+				padding:0;
+				float:left;
+				width:55px;
+				height:55px;
+				border:1px solid;
+				border-radius:4px;
+				margin-right:4px;
+				margin-bottom:4px;
+				display:inline-block;
+			}
+
+			.btn-matcap + .btn-matcap,
+			.btn-terrain + .btn-terrain {
+				margin-right:4px;
+			}
+
+		</style>
+	</head>
+
+	<body ontouchstart="">
+
+		<script src="/decal/js/three.js"></script>
+		<script src="/decal/js/TabUI.js"></script>
+		<script src="/decal/js/UVsDebug.js"></script>
+		<script src="/decal/js/FBXLoader.js"></script>
+		<script src="/decal/js/EditorControls.js"></script>
+		<script src="/decal/js/SubdivisionModifier.js"></script>
+		<script src="/decal/js/camera-controls.js"></script>
+		<script src="/decal/js/DecalGeometry.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/OBJLoader.js"></script>
+		<script src="/threejs/r96/examples/js/loaders/GLTFLoader.js"></script>
+		<script src="/threejs/r96/examples/js/exporters/GLTFExporter.js"></script>
+		<script src="/threejs/r96/examples/js/exporters/STLExporter.js"></script>
+		<script src="/threejs/r96/examples/js/exporters/OBJExporter.js"></script>
+		<script src="/threejs/r96/examples/js/exporters/ColladaExporter.js"></script>
+		<script src="/threejs/r96/examples/js/utils/GeometryUtils.js"></script>
+		<script src="/threejs/r96/examples/js/utils/BufferGeometryUtils.js"></script>
+
+		<script>
+
+			debugMode = true; // important!
+			Number.prototype.format = function (){
+				return this.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
+			};
+
+		</script>
+
+		<script>
+
+		//	TabUI.
+
+			(function(){
+
+				var sidePanel = createSidePanel();
+				sidePanel.style.background = "#eeeeeeee";
+
+				var bodyTab = TabUI.add( "Body", "body-tab" );
+				var eyesTab = TabUI.add( "Eyes", "eyes-tab" );
+				var hairTab = TabUI.add( "Hair", "hair-tab" );
+				var shoeTab = TabUI.add( "Shoes", "shoe-tab" );
+				var decalTab = TabUI.add( "Decal", "decal-tab" );
+				var debugTab = TabUI.add( "Debug", "debug-tab" );
+				var outfitTab = TabUI.add( "Outfit", "outfit-tab" );
+				var materialTab = TabUI.add( "Materials", "material-tab" );
+				var snapshotTab = TabUI.add( "Snapshots", "snapshots-tab" );
+
+			//	var loginTab = TabUI.add( "Login", "login-tab" );
+			//	var levelTab = TabUI.add( "Levels", "level-tab" );
+			//	var cameraTab = TabUI.add( "Camera", "camera-tab" );
+			//	var controlTab = TabUI.add( "Controls", "control-tab" );
+			//	var underwearTab = TabUI.add( "Underwears", "underwears-tab" );
+
+				document.body.appendChild( sidePanel );
+				TabUI.append("Decal", "Outfit", "Materials", "Snapshots", "Debug" );
+				TabUI.Decal.role.classList.add("active");
+				TabUI.Decal.tab.classList.add("in","active");
+
+			})();
+
+		//	Outfit Manager.
+
+			(function(){
+
+				Signal = signals.Signal;
+
+				OutfitManager = {
+
+					currentSlot: null,
+					currentLayer: null,
+					update: new Signal(),
+
+					layerDroplistUpdated: new Signal(),
+					outfitDroplistUpdated: new Signal(),
+
+					hatDroplistUpdated: new Signal(),
+					hairDroplistUpdated: new Signal(),
+					shoesDroplistUpdated: new Signal(),
+					glassesDroplistUpdated: new Signal(),
+					upperbodyDroplistUpdated: new Signal(),
+					lowerbodyDroplistUpdated: new Signal(),
+
+				};
+
+				watch( OutfitManager, "currentSlot", function(prop, action, value){
+					debugMode && console.log( prop, action, value );
+					document.getElementById("outfit-droplist").value = value;
+				});
+
+				watch( OutfitManager, "currentLayer", function(prop, action, value){
+					debugMode && console.log( prop, action, value );
+					document.getElementById("layer-droplist").value = value;
+				});
+
+			})();
+
+		</script>
+
+		<script>
+
+		//	Outfit tab.
+
+			(function(){
+
+			//	Outfit slot.
+				
+				var slots = {
+					hair:  null,
+					body:  null,
+					legs:  null,
+					torso: null,
+					shoes: null,
+					glasses: null,
+				};
+
+				var tab = TabUI.Outfit.tab;
+				var row = document.createElement("h3");
+				row.textContent = "Outfit";
+				row.title = "Outfit manager";
+
+				var select = document.createElement("select");
+				select.id = "outfit-droplist";
+				select.style.cssText = "width:180px;color:#000;float:right;"
+					+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+					+ "font-size:20px;margin-left:10px;";
+
+				select.appendChild(createOption("Hair"));
+			//	select.appendChild(createOption("Body"));
+				select.appendChild(createOption("Legs"));
+				select.appendChild(createOption("Torso"));
+				select.appendChild(createOption("Shoes"));
+				select.appendChild(createOption("Glasses"));
+
+				select.addEventListener( "change", function(){
+					var key = this.value.toLowerCase();
+					OutfitManager.currentSlot = key; // important!
+					OutfitManager.outfitDroplistUpdated.dispatch( slots[ key ] ); // uuid.
+				});
+
+				OutfitManager.add = 
+				OutfitManager.addItem = function(key, item){
+					slots[ key.toLowerCase() ] = item;
+				};
+
+				OutfitManager.getItem = 
+				OutfitManager.getSlotValue = 
+				OutfitManager.get = function( key ){
+					if ( key ) return slots[ key.toLowerCase() ];
+					else return slots[ select.value.toLowerCase() ];
+				};
+
+				OutfitManager.getItems = 
+				OutfitManager.getSlotItems = function(){
+					return slots;
+				};
+
+				OutfitManager.setValue = 
+				OutfitManager.setSlotValue = 
+				OutfitManager.set = function( key, value ){
+					slots[ key.toLowerCase() ] = value; // uuid.
+				};
+
+			//	Update material droplist.
+				OutfitManager.outfitDroplistUpdated.add( function( uuid ){
+
+					var select = document.getElementById("material-droplist");
+					if ( !select ) throw "outfitDroplistUpdated: select not found!";
+
+					while ( select.options.length ){ select.options.remove(0); }
+
+					if ( !uuid ) return; // important!
+					
+					var mesh = outfits.find(function(item){ return item.uuid == uuid; });
+
+					if ( !mesh ) throw "outfitDroplistUpdated: mesh not found!";
+
+					if ( Array.isArray(mesh.material) ) 
+						mesh.material.forEach(function( material ){
+							select.addItem( material );
+						});
+
+					else select.addItem( mesh.material );
+
+				});
+
+				select.value = "";
+				row.appendChild( select );
+				tab.appendChild( row );
+
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					option.value = name.toLowerCase();
+					return option;
+				}
+
+			})();
+
+		//	Add/Remove button.
+
+			(function(){
+
+				var tab = TabUI.Outfit.tab;
+				var row = document.createElement("h3");
+				row.style.cssText = "height:40px;";
+
+				var button = document.createElement("div");
+				button.textContent = "Remove";
+				button.style.cssText = "height:40px;font-size:large;";
+				button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
+
+				button.addEventListener( "click", function(){
+					var select = document.getElementById("outfit-droplist");
+					if ( !select ) throw "outfit-droplist not found!";
+					var uuid = OutfitManager.get( select.value );
+					var selected = getOufitByUUID( uuid );
+					if ( !selected ) throw "selected mesh not found!";
+
+					button.textContent = "Remove";
+					if (OutfitManager.currentSlot) {
+						button.textContent += " ";
+						button.textContent += OutfitManager.currentSlot;
+					}
+
+					scene.remove( selected );
+				});
+				
+				function droplistUpdate( select, uuid ){
+
+					var mesh = getOufitByUUID( uuid );
+
+					if ( !mesh ) { 
+						select.value = ""; 
+						return; 
+					}
+
+					if ( mesh.parent != scene ) 
+						select.value = ""; 
+					else 
+						select.value = uuid;
+				}
+
+				OutfitManager.update.add( function( mesh ){
+
+					scene.add( mesh );
+					button.textContent = "Remove";
+
+					if (OutfitManager.currentSlot) {
+						button.textContent += " ";
+						button.textContent += OutfitManager.currentSlot;
+					}
+
+				});
+
+				OutfitManager.update.add( function(){
+					var uuid = OutfitManager.getItem("hair"); 
+					var select = document.getElementById("hat-droplist");
+					droplistUpdate( select, uuid );
+				});
+
+				OutfitManager.update.add( function(){
+					var uuid = OutfitManager.getItem("hair"); 
+					var select = document.getElementById("hair-droplist");
+					droplistUpdate( select, uuid );
+				});
+
+				OutfitManager.update.add( function(){
+					var uuid = OutfitManager.getItem("legs"); 
+					var select = document.getElementById("lowerbody-droplist");
+					droplistUpdate( select, uuid );
+				});
+
+				OutfitManager.update.add( function(){
+					var uuid = OutfitManager.getItem("torso"); 
+					var select = document.getElementById("upperbody-droplist");
+					droplistUpdate( select, uuid );
+				});
+
+				OutfitManager.update.add( function(){
+					var uuid = OutfitManager.getItem("shoes"); 
+					var select = document.getElementById("shoes-droplist");
+					droplistUpdate( select, uuid );
+				});
+
+				OutfitManager.update.add( function(){
+					var uuid = OutfitManager.getItem("glasses"); 
+					var select = document.getElementById("glasses-droplist");
+					droplistUpdate( select, uuid );
+				});
+
+				(function( select ){
+					if ( !select ) throw "select not found!";
+					select.addEventListener( "change", function(){
+						var uuid = OutfitManager.get( select.value );
+						if ( !uuid ) {
+							OutfitManager.update.dispatch();
+							throw "slot "+select.value+" is null!";
+						}
+						var mesh = getOufitByUUID( uuid );
+						if ( !mesh ) {
+							OutfitManager.update.dispatch();
+							throw "selected mesh not found!";
+						}
+						OutfitManager.update.dispatch( mesh );
+					});
+				})( document.getElementById("outfit-droplist") );
+
+				row.appendChild( button );
+				tab.appendChild( row );
+
+			})();
+
+		//	Female Hat.
+
+			(function(){
+
+				var tab = TabUI.Outfit.tab;
+				var row = document.createElement("h3");
+				row.textContent = "Hat";
+
+				var select = document.createElement("select");
+				select.id = "hat-droplist";
+				select.style.cssText = "width:180px;color:#000;float:right;"
+				+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+				+ "font-size:20px;margin-left:10px;";
+
+				select.appendChild(createOption("Ski"));
+				select.appendChild(createOption("Witch"));
+				select.appendChild(createOption("Nurse"));
+				select.appendChild(createOption("Santa"));
+				select.appendChild(createOption("Sailor"));
+				select.appendChild(createOption("Indian"));
+				select.appendChild(createOption("Catwoman"));
+
+				select.addEventListener( "change", function(){
+					OutfitManager.currentSlot = "hair"; // important!
+					document.getElementById("hair-droplist").value = "";
+					OutfitManager.hatDroplistUpdated.dispatch( this.value ); // uuid.
+				});
+
+			//	Hide current hair.
+				OutfitManager.hatDroplistUpdated.add( function(){
+					if ( !OutfitManager.get("hair") ) return; // important!
+					var uuid = OutfitManager.get("hair");
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "hatDroplistUpdated: hair not found!";
+					scene.remove( mesh ); OutfitManager.setValue("hair", null);
+				});
+
+			//	Show selected hat.
+				OutfitManager.hatDroplistUpdated.add( function( uuid ){
+
+					if ( !uuid ) { 
+						OutfitManager.update.dispatch();
+						OutfitManager.outfitDroplistUpdated.dispatch( null ); // important!
+						return false; // stop propagetion.
+					}
+
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "hatDroplistUpdated: hat not found!";
+					scene.add( mesh ); OutfitManager.setValue("hair", uuid);
+					OutfitManager.update.dispatch( mesh );
+					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
+				});
+
+				select.value = "";
+				row.appendChild( select );
+				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
+
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					if ( value != null ) option.value = value;
+					else option.value = "HF_Hat_"+name.replace(/\s/g, "_");
+					return option;
+				}
+
+			})();
+
+		//	Female Hair.
+
+			(function(){
+
+				var tab = TabUI.Outfit.tab;
+				var Signal = signals.Signal;
+
+				var row = document.createElement("h3");
+				row.textContent = "Hair";
+
+				var select = document.createElement("select");
+				select.id = "hair-droplist";
+				select.style.cssText = "width:180px;color:#000;float:right;"
+					+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+					+ "font-size:20px;margin-left:10px;";
+
+				select.appendChild(createOption("Med"));
+				select.appendChild(createOption("Med Bob"));
+				select.appendChild(createOption("Med Shag"));
+				select.appendChild(createOption("Med Curly"));
+				select.appendChild(createOption("Med Bob Bangs"));
+				select.appendChild(createOption("Med Ponytail"));
+				select.appendChild(createOption("Bob Tied"));
+				select.appendChild(createOption("Bob Short"));
+				select.appendChild(createOption("Long Curly"));
+				select.appendChild(createOption("Long Parted"));
+				select.appendChild(createOption("Long No Bangs"));
+				select.appendChild(createOption("Long Cut Bangs"));
+				select.appendChild(createOption("Long Straight"));
+				select.appendChild(createOption("Long Swoop Bangs"));
+				select.appendChild(createOption("Short"));
+				select.appendChild(createOption("Short Vic"));
+				select.appendChild(createOption("Short Straight"));
+				select.appendChild(createOption("Pigtails"));
+				select.appendChild(createOption("Piggytail"));
+				select.appendChild(createOption("Big Ponytail"));
+				select.appendChild(createOption("French Braid"));
+				select.appendChild(createOption("Dreads Shoulder"));
+				select.appendChild(createOption("Oriental Tied"));
+				select.appendChild(createOption("Punk Spike"));
+				select.appendChild(createOption("Punk Mohawk"));
+				select.appendChild(createOption("Punk Super Spike"));
+				select.appendChild(createOption("Punk Mohawk Sides"));
+				select.appendChild(createOption("Wavy"));
+
+				select.addEventListener( "change", function(){
+					OutfitManager.currentSlot = "hair"; // important!
+					document.getElementById("hat-droplist").value = "";
+					OutfitManager.hairDroplistUpdated.dispatch( this.value ); // uuid.
+				});
+
+			//	Hide current hair.
+				OutfitManager.hairDroplistUpdated.add( function(){
+					if ( !OutfitManager.get("hair") ) return; // important!
+					var uuid = OutfitManager.get("hair");
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "hatDroplistUpdated: hair not found!";
+					scene.remove( mesh ); OutfitManager.setValue("hair", null);
+				});
+
+			//	Show selected hair.
+				OutfitManager.hairDroplistUpdated.add( function( uuid ){
+
+					if ( !uuid ) { 
+						OutfitManager.update.dispatch();
+						OutfitManager.outfitDroplistUpdated.dispatch( null ); // important!
+						return false; // stop propagetion.
+					}
+
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "hatDroplistUpdated: hair not found!";
+					scene.add( mesh ); OutfitManager.setValue("hair", uuid);
+					OutfitManager.update.dispatch( mesh );
+					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
+				});
+
+				select.value = "";
+				row.appendChild( select );
+				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
+
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					if ( value != null ) option.value = value;
+					else option.value = "HF_Hair_"+name.replace(/\s/g, "_");
+					return option;
+				}
+
+			})();
+
+			(function(){
+
+			//	Female Upperbody.
+
+				var tab = TabUI.Outfit.tab;
+				var Signal = signals.Signal;
+
+				var row = document.createElement("h3");
+				row.textContent = "Torso";
+
+				var select = document.createElement("select");
+				select.id = "upperbody-droplist";
+				select.style.cssText = "width:180px;color:#000;float:right;"
+					+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+					+ "font-size:20px;margin-left:10px;";
+
+				select.appendChild(createOption("Dress"));
+				select.appendChild(createOption("TShirt"));
+				select.appendChild(createOption("Blazer"));
+				select.appendChild(createOption("Hoodie"));
+				select.appendChild(createOption("Corset"));
+				select.appendChild(createOption("Tanktop"));
+				select.appendChild(createOption("CowlNeck"));
+				select.appendChild(createOption("Long Coat"));
+				select.appendChild(createOption("Elvis Jacket"));
+
+				select.addEventListener( "change", function(){
+					OutfitManager.currentSlot = "torso"; // important!
+					OutfitManager.upperbodyDroplistUpdated.dispatch( this.value ); // uuid.
+				});
+
+			//	Hide current upperbody.
+				OutfitManager.upperbodyDroplistUpdated.add( function(){
+					if ( !OutfitManager.get("torso") ) return; // important!
+					var uuid = OutfitManager.get("torso");
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "upperbodyDroplistUpdated: torso not found!";
+					scene.remove( mesh ); OutfitManager.setValue("torso", null);
+				});
+
+			//	Show selected upperbody.
+				OutfitManager.upperbodyDroplistUpdated.add( function( uuid ){
+
+					if ( !uuid ) { 
+						OutfitManager.update.dispatch();
+						OutfitManager.outfitDroplistUpdated.dispatch( null ); // important!
+						return false; // stop propagetion.
+					}
+
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "upperbodyDroplistUpdated: torso not found!";
+					scene.add( mesh ); OutfitManager.setValue("torso", uuid);
+					OutfitManager.update.dispatch( mesh );
+					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
+				});
+
+				select.value = "";
+				row.appendChild( select );
+				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
+
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					if ( value != null ) option.value = value;
+					else option.value = "HF_"+name.replace(/\s/g, "_");
+					return option;
+				}
+
+			})();
+
+			(function(){
+
+			//	Female Lowerbody.
+
+				var tab = TabUI.Outfit.tab;
+				var Signal = signals.Signal;
+
+				var row = document.createElement("h3");
+				row.textContent = "Legs";
+
+				var select = document.createElement("select");
+				select.id = "lowerbody-droplist";
+				select.style.cssText = "width:180px;color:#000;float:right;"
+					+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+					+ "font-size:20px;margin-left:10px;";
+
+				select.appendChild(createOption("Bootcut"));
+				select.appendChild(createOption("Baggy Jeans"));
+				select.appendChild(createOption("Flare Leg"));
+				select.appendChild(createOption("Flare Bottoms"));
+				select.appendChild(createOption("Frilly Skirt"));
+				select.appendChild(createOption("Mini Skirt"));
+				select.appendChild(createOption("Long Skirt"));
+				select.appendChild(createOption("Short Skirt"));
+				select.appendChild(createOption("Straightleg"));
+				select.appendChild(createOption("Gown"));
+
+				select.addEventListener( "change", function(){
+					OutfitManager.currentSlot = "legs"; // important!
+					OutfitManager.lowerbodyDroplistUpdated.dispatch( this.value ); // uuid.
+				});
+
+			//	Hide current lowerbody.
+				OutfitManager.lowerbodyDroplistUpdated.add( function(){
+					if ( !OutfitManager.get("legs") ) return; // important!
+					var uuid = OutfitManager.get("legs");
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "lowerbodyDroplistUpdated: legs not found!";
+					scene.remove( mesh ); OutfitManager.setValue("legs", null);
+				});
+
+			//	Show selected lowerbody.
+				OutfitManager.lowerbodyDroplistUpdated.add( function( uuid ){
+
+					if ( !uuid ) { 
+						OutfitManager.update.dispatch();
+						OutfitManager.outfitDroplistUpdated.dispatch( null ); // important!
+						return false; // stop propagetion.
+					}
+
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "lowerbodyDroplistUpdated: legs not found!";
+					scene.add( mesh ); OutfitManager.setValue("legs", uuid);
+					OutfitManager.update.dispatch( mesh );
+					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
+				});
+
+				select.value = "";
+				row.appendChild( select );
+				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
+
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					if ( value != undefined ) option.value = value;
+					else option.value = "HF_"+name.replace(/\s/g, "_");
+					return option;
+				}
+
+			})();
+
+			(function(){
+
+			//	Female Shoes.
+
+				var tab = TabUI.Outfit.tab;
+				var row = document.createElement("h3");
+				row.textContent = "Shoes";
+
+				var select = document.createElement("select");
+				select.id = "shoes-droplist";
+				select.style.cssText = "width:180px;color:#000;float:right;"
+				+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+				+ "font-size:20px;margin-left:10px;";
+				
+			//	select.appendChild(createOption("Shoes10"));
+
+				for ( var k = 1; k < 22; k++ ) {
+					(function(i){
+						var name = "Shoes ";
+						var value = "HF_Shoes_";
+						if ( i < 10 ) { name += "0"; value += "0"; }
+						var option = document.createElement("option");
+						name += i; option.text = name; 
+						value += i; option.value = value;
+						if ( i == 7 ) option.setAttribute("selected", "");
+						select.appendChild( option );
+					})(k);
+				}
+
+				select.addEventListener( "change", function(){
+					OutfitManager.currentSlot = "shoes"; // important!
+					OutfitManager.shoesDroplistUpdated.dispatch( this.value ); // uuid.
+				});
+
+			//	Hide current shoes.
+				OutfitManager.shoesDroplistUpdated.add( function(){
+					if ( !OutfitManager.get("shoes") ) return; // important!
+					var uuid = OutfitManager.get("shoes");
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "shoesDroplistUpdated: shoes not found!";
+					scene.remove( mesh ); OutfitManager.setValue("shoes", null);
+				});
+
+			//	Show selected shoes.
+				OutfitManager.shoesDroplistUpdated.add( function( uuid ){
+
+					if ( !uuid ) { 
+						OutfitManager.update.dispatch();
+						OutfitManager.outfitDroplistUpdated.dispatch( null ); // important!
+						return false; // stop propagetion.
+					}
+
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "shoesDroplistUpdated: shoes not found!";
+					scene.add( mesh ); OutfitManager.setValue("shoes", uuid);
+					OutfitManager.update.dispatch( mesh );
+					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
+				});
+
+				select.value = "";
+				row.appendChild( select );
+				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
+
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					if ( value != undefined ) option.value = value;
+					else option.value = "HF_Shoes_"+name.replace(/\s/g, "_");
+					return option;
+				}
+
+			})();
+
+		//	Female Glasses.
+
+			(function(){
+
+				var tab = TabUI.Outfit.tab;
+				var Signal = signals.Signal;
+
+				var row = document.createElement("h3");
+				row.textContent = "Glasses";
+
+				var select = document.createElement("select");
+				select.id = "glasses-droplist";
+				select.style.cssText = "width:180px;color:#000;float:right;"
+					+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+					+ "font-size:20px;margin-left:10px;";
+
+				select.appendChild(createOption("Mask"));
+				select.appendChild(createOption("Glasses1"));
+				select.appendChild(createOption("Glasses2"));
+				select.appendChild(createOption("Glasses3"));
+				select.appendChild(createOption("Glasses4"));
+
+				select.addEventListener( "change", function(){
+					OutfitManager.currentSlot = "glasses"; // important!
+					OutfitManager.glassesDroplistUpdated.dispatch( this.value ); // uuid.
+				});
+
+			//	Hide current glasses.
+				OutfitManager.glassesDroplistUpdated.add( function(){
+					if ( !OutfitManager.get("glasses") ) return; // important!
+					var uuid = OutfitManager.get("glasses");
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "glassesDroplistUpdated: glasses not found!";
+					scene.remove( mesh ); OutfitManager.setValue("glasses", null);
+				});
+
+			//	Show selected glasses.
+				OutfitManager.glassesDroplistUpdated.add( function( uuid ){
+
+					if ( !uuid ) {
+						OutfitManager.update.dispatch();
+ 						OutfitManager.outfitDroplistUpdated.dispatch( null ); // important!
+						return false; // stop propagetion.
+					}
+
+					var mesh = getOufitByUUID( uuid );
+					if ( !mesh ) throw "glassesDroplistUpdated: glasses not found!";
+					scene.add( mesh ); OutfitManager.setValue("glasses", uuid);
+					OutfitManager.update.dispatch( mesh );
+					OutfitManager.outfitDroplistUpdated.dispatch( uuid ); // important!
+				});
+
+				select.value = "";
+				row.appendChild( select );
+				tab.appendChild( row );
+
+				function getOufitByUUID( uuid ){
+					return outfits.find(function(item){ 
+						return item.uuid == uuid; 
+					});
+				}
+
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					if ( value != undefined ) option.value = value;
+					else option.value = "HF_"+name.replace(/\s/g, "_");
+					return option;
+				}
+
+			})();
+
+		</script>
+
+		<script>
+
+		//	Material Tab.
+
+			(function(){
+
+			//	Material manager.
+
+				MaterialManager = {
+					matcapSelected: new Signal(),
+					currentMaterial: null, // uuid.
+				};
+
+				watch( MaterialManager, "currentMaterial", function(prop, action, value){
+					debugMode && console.log( prop, action, value );
+				});
+
+			})();
+
+			(function(){
+
+			//	Material droplist.
+
+				var currentMaterial = null;
+
+				var tab = TabUI.Materials.tab;
+				var row = document.createElement("h3");
+				row.textContent = "Material";
+
+				var select = document.createElement("select");
+				select.id = "material-droplist";
+				select.style.cssText = "width:200px;color:#000;"
+				+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+				+ "font-size:20px;margin-left:10px;";
+
+				select.addItem = function( item ){
+					createOption(item.name, item.uuid);
+				};
+
+				select.addEventListener("change", function(){
+					MaterialManager.currentMaterial = this.value; // uuid.
+				});
+
+				row.appendChild( select );
+				tab.appendChild( row );
+				
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					option.value = value;
+					select.appendChild( option );
+				}
+
+			})();
+
+			(function(){
+
+				var textures = {};
+				textures.dispose = function(){
+					for (var uuid in this ) {
+						var texture = this[ uuid ];
+						texture.dispose && texture.dispose();
+					}
+				}
+
+				MaterialManager.matcapSelected.add( function( material ){
+
+					var currentSlot = OutfitManager.currentSlot;
+					if ( !currentSlot ) return false; // stop propagination.
+					var uuid = OutfitManager.get(currentSlot); // important!
+					if ( !uuid ) return false; // stop propagination.
+
+					var mesh = scene.getObjectByProperty("uuid", uuid );
+					if ( !mesh ) throw "outfit mesh not found!"; 
+					if ( !mesh.visible ) return false; // stop propagination.
+					
+					if ( Array.isArray( mesh.material ) ) {
+						if ( mesh.material.find( function( item ){
+							return item.uuid == material.uuid;
+						}) == null ) return false;  // stop propagination.
+					} else {
+						if ( mesh.material.uuid != material.uuid ) return false; // stop propagination.
+					}
+				});
+
+				MaterialManager.matcapSelected.add( function( material, uuid ){
+					if ( !material ) throw "material is null!";
+					if ( !material.visible ) return; // important!
+					material.roughness = 0;
+					material.metalness = 1;
+					material.envMap = textures[ uuid ];
+					material.envMap.needsUpdate = true;
+					material.needsUpdate = true;
+					textures.dispose();
+				});
+
+				var matcaps = (
+					"bixnsMm,MS1GDja,pUytALG,4KwC8wH,Wiqsp9s,gXRFY3U,2tkhy7C,D64zaTR,Id8k2u4,Fx9154f,"
+					+ "dqKYFPo,l0Lf1LN,7bH7Ajw,IeAwKEi,VysdwUU,dWAhf12,9ufYr2S,iAWd8i1,mkGDAn5,gf3PsvD,"
+					+ "BeHwxKA,GYBQ8Xr,9gxylAS,0p2RT39,aHeUCko,epbmrGs,NKMFDGB,pvXMCj9,QbZ8H2v,aCAVXQb,"
+					+ "qU0AEUM,yvwt1wj,D5UeFcC,6GZMeko,rSlm3oM,Xqg7n0A,PzHZLHy,MEzwCJq,wgf7Vl0,GcLQiey,"
+					+ "3xH34nj,vhdhgMe,jRTIv3l,xELCxlQ,wtJaViy,Qb0qKtc,7kq8wQ3,F6kcile,0LRxFql,rxUXS8C,"
+					+ "qXg0NKn,LSB7hqR,EolEkFt,gOtyiMy,YTE0R32,thsIYPF,ee6stBn,gyYhQao,QOEE3jO,0V4rQPV,"
+					+ "l9Tugo0,R86xHzg,IDlk0H9,tUparH7,GISkhjO,JQzRceW,Jl6XqD0,4tyRlwP,aFIJ3Iu,BCqRnS4,"
+					+ "1OcGlAa,PqIxyYE,S7J95Cf,QPUvzXD,Stdy1eT,k0nOt5N,rWuDYYe,SGRUmyD,1Ia4Qbk,FFYLtQa,"
+					+ "szmc38X,NJSPJlS,8HsVNJA,n3wbE5E,88autaS,7jwTUiI,H1F3Yrv,kgV7aSY,PDFIrWw,Uun8Lpr,"
+					+ "Oz16d2L,02gRNwL,bV94g46,eUEtBHC,e1N7JYN,bWpofvm,uzlo3mR,YaXveL2,mw2f1lF,HkWGQb1,"
+					+ "N9xoehs,53rWmmo,sBPySdS,1YZKblR,ywKHb7r,3UcbBN7,pWPtSJS,n1a2nB8,lecZa2Q,e3bxY9I,"
+					+ "WxVSuFW," // normal matcap.
+				).split(",")
+
+				matcaps.pop(); // removes last empty item. (important!)
+
+				var tab = TabUI.Materials.tab;
+				var container = document.createElement("div");
+				container.id = "matcap-buttons";
+				container.style.cssText = "width:101%;max-height:530px;overflow-y:auto;";
+
+				while ( matcaps.length ) {
+					(function( id ){
+
+						var button = document.createElement("div");
+						button.id = id;
+						button.classList.add("btn", "btn-white-outline", "btn-matcap");
+						button.style.cssText = "background-size:contain;background-image:url(https://i.imgur.com/"+id+"s.png);";
+					//
+						var url = "https://i.imgur.com/"+id+".png";   // TODO: cache matcaps.
+						var loader = new THREE.ImageLoader();
+						loader.setCrossOrigin("anonymous");						// important!
+						loader.load( url, function( image ){
+							var mapping = THREE.SphericalReflectionMapping;		// important!
+							var texture = new THREE.Texture( image, mapping );	// important!
+							texture.sourceFile = url;							// important!
+							textures[ texture.uuid ] = texture;
+							button.setAttribute("uuid", texture.uuid);
+							container.appendChild( button );
+						});
+
+						button.addEventListener( "click", function(){
+							var select = document.getElementById("material-droplist");
+							if ( !select ) throw "material-droplist not found!";
+							if ( !select.value ) return; // important!
+							var material = MaterialManager.getByUUID( select.value );
+							if ( !material ) throw "material not found!";
+							var uuid = button.getAttribute("uuid");
+							MaterialManager.matcapSelected.dispatch( material, uuid );
+						});
+
+					})( matcaps.shift() );
+
+				}
+
+				tab.appendChild( container );
+
+			})();
+
+		//	Material Manager.
+
+			(function(){
+
+				var material;
+				var materials = [];
+
+				var tab = TabUI.Materials.tab;
+				var row = document.createElement("h3");
+				row.textContent = "Manager";
+				row.title = "Material Manager";
+
+				var Signal = signals.Signal;
+			//	materialSelected = new Signal();
+
+				var select = document.createElement("select");
+				select.id = "material-manager";
+				select.style.cssText = "width:180px;color:#000;" // float:left;
+					+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+					+ "font-size:20px;margin-left:10px;";
+
+				select.addEventListener("change", function(){
+					material = MaterialManager.getByUUID( this.value );
+				});
+
+				MaterialManager.addItem = 
+				MaterialManager.addMaterial = 
+				MaterialManager.add = function( item ){
+					materials.push( item );
+					createOption(item.name, item.uuid);
+				};
+
+				MaterialManager.getItemByName = 
+				MaterialManager.getMaterialByName = 
+				MaterialManager.getByName = function( name ){
+					return materials.find(function( item ){
+						return item.name == name;
+					});
+				};
+
+				MaterialManager.getItemByUUID = 
+				MaterialManager.getMaterialByUUID = 
+				MaterialManager.getByUUID = function( uuid ){
+					return materials.find(function( item ){
+						return item.uuid == uuid;
+					});
+				};
+
+				MaterialManager.getItems = 
+				MaterialManager.getMaterials = function(){
+					return materials;
+				};
+
+				MaterialManager.getItem = 
+				MaterialManager.getMaterial = 
+				MaterialManager.get = function(){
+					return materials.find(function( item ){
+						return item.uuid == select.value;
+					});
+				};
+
+				row.appendChild( select );
+				tab.appendChild( row );
+				
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					option.value = value;
+					select.appendChild( option );
+				}
+
+			})();
+
+		//	Show/Hide button.
+
+			(function(){
+
+				var tab = TabUI.Materials.tab;
+				var row = document.createElement("h3");
+				row.style.cssText = "height:40px;";
+
+				var button = document.createElement("div");
+				button.textContent = "Hide Selected";
+				button.style.cssText = "height:40px;font-size:large;";
+				button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+				button.update = function( visible ){
+					if ( visible ) 
+						button.textContent = "Hide Selected";
+					else 
+						button.textContent = "Show Selected";
+				};
+
+				(function( select ){
+					if ( !select ) throw "material manager select not found!";
+					select.addEventListener( "change", function(){
+						var selected = MaterialManager.get();
+						if ( !selected ) throw "selected material not found!";
+						button.update( selected.visible );
+					});
+				})( document.getElementById("material-manager") );
+
+				button.addEventListener( "click", function(){
+					var select = document.getElementById("material-manager");
+					if ( !select ) throw "material manager select not found!";
+					var selected = MaterialManager.get(); // material.
+					if ( !selected ) throw "selected material not found!";
+					selected.visible = !selected.visible;
+					button.update( selected.visible );
+				});
+
+				row.appendChild( button );
+				tab.appendChild( row );
+			})();
+
+		</script>
+
+		<script>
+
+		//	Scene.
+			scene = new THREE.Scene();
+
+		//	Camera.
+			(function(){
+
+				var aspect = (window.innerWidth - 370) / window.innerHeight;
+				camera = new THREE.PerspectiveCamera( 50, aspect, 1, 1e9 );
+				camera.position.set(-0, 250, 800);
+
+			})();
+
+		//	Editor Controls.
+			(function(){
+				controls = new THREE.EditorControls(camera);
+				camera.lookAt(controls.center); // important!
+			})();
+
+		//  Camera Light.
+			(function(){
+
+				cameraLight = new THREE.DirectionalLight( 0xdfebff, 0.75 );
+				cameraLight.position.set( 0, 500, 300 );
+				cameraLight.castShadow = true;
+				cameraLight.shadow.mapSize.width  = Math.pow(2, 10); // 2048;
+				cameraLight.shadow.mapSize.height = Math.pow(2, 10); // 2048;
+
+				var d = 30;
+				cameraLight.shadow.camera.left = - d;
+				cameraLight.shadow.camera.right = d;
+				cameraLight.shadow.camera.top = d;
+				cameraLight.shadow.camera.bottom = - d;
+				cameraLight.shadow.camera.far = 10000;
+
+				shadowHelper = new THREE.CameraHelper(cameraLight.shadow.camera);
+				shadowHelper.visible = false;
+
+				scene.add( cameraLight, shadowHelper  );
+
+				(function update(){
+					requestAnimationFrame( update );
+					cameraLight.position.copy( camera.position );
+				})();
+
+			})();
+
+		//  Renderer.
+			(function(){
+
+				renderer = new THREE.WebGLRenderer({
+					alpha: true,  // for transparent rendering set alpha:true, important!
+					antialias: true,
+					preserveDrawingBuffer: true,
+				});
+
+				renderer.gammaInput = true;
+				renderer.gammaOutput = true;
+				renderer.shadowMap.enabled = true;
+				renderer.setClearAlpha( 0 ); // for transparent rendering set clear alpha: 0.
+				renderer.setClearColor( 0x000000, 1 ); // for transparent rendering set clear alpha: 0.
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( (window.innerWidth - 370), window.innerHeight );
+				renderer.domElement.style.background = "none";  // transparent rendering. important!
+				document.body.appendChild( renderer.domElement );
+
+				window.addEventListener("resize", function onWindowResize() {
+					renderer.setSize( (window.innerWidth - 370), window.innerHeight );
+				});
+
+				window.addEventListener("resize", function onWindowResize() {
+					camera.aspect = renderer.domElement.clientWidth / renderer.domElement.clientHeight;
+					camera.updateProjectionMatrix();
+				});
+
+				mouse = new THREE.Vector2();
+
+				renderer.domElement.addEventListener("mousemove", function(e) {
+					mouse.x = ( e.clientX / this.clientWidth ) * 2 - 1;
+					mouse.y = - ( e.clientY / this.clientHeight ) * 2 + 1;
+				});
+
+				(function render(){
+					requestAnimationFrame( render );
+					renderer.render( scene, camera );
+				})();
+
+			})();
+
+		//	Ground Helper.
+			(function(){
+				groundHelper = new THREE.GridHelper( 3000, 100, 0x444444, 0x444444 );
+				scene.add( groundHelper );
+			})();
+
+		</script>
+
+		<script>
+
+		//	Decal tab.
+
+			(function(){
+
+			//	Important: Decal does not work with skinned mesh.
+
+				var tab = TabUI.Decal.tab;
+
+				var viewer = document.createElement("div");
+				viewer.id = "decal-viewer";
+				viewer.style.cssText = "width:100%;height:300px;text-align:center;margin-bottom:20px;";
+				tab.appendChild( viewer );
+
+				(function(){
+
+					var row = document.createElement("div");
+					row.style.cssText = "margin:10px 15px;height:40px;text-align:center;";
+					row.appendChild( importButton() );
+					tab.appendChild( row );
+
+					function importButton(){
+
+						var input = document.createElement("input");
+						input.type = "file";
+						input.style.cssText = "display:none;";
+
+						input.addEventListener("change", function(){
+							
+							var file = input.files[0];
+							debugMode && console.log( file );
+
+							var name = file.name;
+							
+							var reader = new FileReader();
+							reader.onload = function(){
+								loadOBJdecal( reader.result );
+							};
+							reader.onerror = function(err){
+								console.error(err);
+							};
+
+							reader.readAsText( file );
+
+						});
+
+						var button = document.createElement("div");
+						button.id = "import-mesh";
+						button.textContent = "Import mesh";
+						button.style.cssText = "min-width:60%;width:fit-content;height:40px;font-size:large;";
+						button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+						button.appendChild( input );
+
+						button.addEventListener( "click", function removeDecals() {
+							input.value = "";
+							input.click();
+						});
+
+						return button;
+					}
+
+				})();
+
+				(function(){
+
+					var row = document.createElement("div");
+					row.style.cssText = "margin:10px 15px;height:40px;text-align:center;";
+					row.appendChild( removeButton() );
+					tab.appendChild( row );
+
+					function removeButton(){
+
+						var button = document.createElement("div");
+						button.id = "clear-decals";
+						button.textContent = "Clear decals";
+						button.style.cssText = "min-width:60%;width:fit-content;height:40px;font-size:large;";
+						button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+						button.addEventListener( "click", function removeDecals() {
+							decals.forEach( function( d ) { 
+								scene.remove( d ); 
+							});
+							decals = [];
+						});
+
+						return button;
+					}
+
+				})();
+
+				(function(){
+
+					var row = document.createElement("div");
+					row.style.cssText = "margin:10px 15px;height:40px;text-align:center;";
+					row.appendChild( exportButton() );
+					tab.appendChild( row );
+
+					function exportButton(){
+
+						var button = document.createElement("div");
+						button.id = "export-decal";
+						button.textContent = "Save decal";
+						button.style.cssText = "min-width:60%;width:fit-content;height:40px;font-size:large;";
+						button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+						button.addEventListener( "click", function removeDecals() {
+							if ( !decal ) return;
+							var name = "decal-mesh";
+							var exporter = new THREE.OBJExporter();
+							saveString( exporter.parse( decal ), name+".obj" );
+						});
+
+						return button;
+					}
+
+				})();
+
+				function saveString( text, filename ) {
+					save( new Blob( [ text ], { type: "text/plain" } ), filename );
+				}
+
+				function saveArrayBuffer( buffer, filename ) {
+					save( new Blob( [ buffer ], { type: "application/octet-stream" } ), filename );
+				}
+
+				function save( blob, filename ) {
+					var link = document.createElement( "a" );
+					link.download = filename;
+					link.href = URL.createObjectURL( blob );
+					link.addEventListener( "click", function(){
+						setTimeout( function(){
+							URL.revokeObjectURL( link.href );
+						});
+					});
+					link.click();
+				}
+
+			})();
+
+		//	Important: Decal does not work with skinned mesh.
+
+			function loadOBJdecal( text ){
+
+				var loader = new THREE.OBJLoader();
+				var group = loader.parse( text );
+				var s = 1; group.scale.set(s,s,s); // important!
+				debugMode && console.log( group );
+
+				group.traverse( function( child ){
+					if (child.isMesh) {	
+
+						child.scale.set(s,s,s);
+						child.castShadow = false;	
+						child.receiveShadow = false;
+						debugMode && console.log( child );
+
+						//	replace material.
+
+						if ( Array.isArray(child.material) ) {
+							child.material = child.material.map( function( item ){
+								var name = item.name;
+								return new THREE.MeshStandardMaterial({
+									name:name, side:0, skinning:false, // important!
+								});
+							});
+
+							child.material.forEach( function( material ){
+								MaterialManager.addItem( material );
+							});
+
+						} else {
+
+							var name = child.material.name;
+							child.material = new THREE.MeshStandardMaterial({
+								name:name, side:0, skinning:false, // important!
+							});
+
+							(function( material ){
+								MaterialManager.addItem( material );
+							})( child.material );
+
+						}
+
+					//	decal helper.
+						(function(){
+							decalHelper = new THREE.BoxHelper( child, 0xffff00 );
+							decalHelper.geometry.computeBoundingBox(); // important!
+							debugMode && console.log( decalHelper );
+							scene.add( decalHelper ); 
+						})();
+
+					//	decal shoot.
+						(function(){
+							var mesh = decalHelper.object;
+							var size = decalHelper.geometry.boundingBox.getSize(new THREE.Vector3());
+							var position = decalHelper.geometry.boundingSphere.center.clone();
+							var orientation = decalHelper.rotation.clone();
+							var geometry = new THREE.DecalGeometry( mesh, position, orientation, size );
+							var material = new THREE.MeshBasicMaterial({wireframe:true});
+							decal = new THREE.Mesh( geometry, material );
+							debugMode && console.log( decal );
+							scene.add( decal );
+							drawUV( geometry );
+						})();
+
+					//	debug.
+						function drawUV( geometry ){
+							var viewer = document.getElementById("decal-viewer");
+							if ( !viewer ) return;
+							while ( viewer.children.length ){
+								viewer.firstChild.remove();
+							}
+							var canvas = THREE.UVsDebug(geometry, 1024);
+							canvas.style.cssText = "width:100%;height:auto;"
+							viewer.appendChild( canvas );
+						}
+
+						//	scene.add( child );
+
+					} // end if is mesh.
+
+				}); // end group traverse.
+
+			} // end loadOBJ.
+
+		</script>
+
+		<script>
+			
+		//	Snapshots tab.
+			
+			(function(){
+
+				var tab = TabUI.Snapshots.tab;
+
+				var viewer = document.createElement("div");
+				viewer.style.cssText = "width:100%;height:300px;text-align:center;margin-bottom:20px;";
+				tab.appendChild( viewer );
+
+			//	var image = new Image(300, 300);
+			//	image.id = "snapshot-viewer-img";
+			//	image.style.cssText = "width:100%;height:auto;border:1px solid;";
+			//	viewer.appendChild(image);
+			//	viewer.appendChild( image );
+
+				var row = document.createElement("div");
+				row.style.cssText = "margin:10px 15px;height:40px;text-align:center;";
+
+				var button = document.createElement("div");
+				button.id = "take-snapshot";
+				button.textContent = "Take snapshot";
+				button.style.cssText = "min-width:60%;width:fit-content;height:40px;font-size:large;";
+				button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+				button.addEventListener( "click", function onClickHandler(){
+
+				//	Hide ground helper.
+					var restoreGroundHelper = false;
+					if ( groundHelper && groundHelper.visible ) {
+						restoreGroundHelper = true;
+						groundHelper.visible = false;
+					}
+
+				//	Store clear color, alpha.
+					var color = renderer.getClearColor();
+					var alpha = renderer.getClearAlpha();
+
+				//	Create result dialog box.
+					var dialog = createDialog( 0.7 ); 
+					document.body.appendChild( dialog );
+				//	debugMode && console.log( dialog );
+
+					function createDialog( scale ){
+
+					//	Render snapshot.
+						if ( !scale ) scale = 0.5;
+						var width = parseInt( scale * renderer.domElement.width );
+						var height = parseInt( scale * renderer.domElement.height );
+						renderer.setSize(width, height); 
+						renderer.setClearColor( 0x000000, 0 ); // for transparent rendering set clear alpha: 0.
+						renderer.render( scene, camera ); // important!
+						var dataURL = renderer.domElement.toDataURL("image/png");
+
+					//	Calculate margins.
+						function calcMargins(){
+						//	var margins = (1-scale) * width / 2;
+							var innerWidth = parseInt( window.innerWidth - 370 );
+							var margins = parseInt( 0.5 * ( innerWidth - width) );
+							var left = margins.toFixed(0)+"px;";
+							var right = (margins + 370).toFixed(0)+"px;";
+							return "left:"+left+"right:"+right; // +"width:"+width.toFixed(0)+"px;";
+						}
+
+						var dialog = document.createElement("div");
+						dialog.style.cssText = "display:block;position:fixed;" 
+					//	+ "min-height:400px;max-height:600px;height:auto;"
+						+ "top:50px;padding:0px;background:#2fa4e7;z-index:100;"
+						+ "border:black 2px solid;border-radius:15px;"
+						+ "text-align:center !important;" + calcMargins();
+
+						var img = new Image();
+						img.id = "snapshot-img";
+						img.style.cssText = "width:100%;height:auto;";
+						img.src = dataURL;
+						dialog.appendChild( img );
+
+						jcrop = Jcrop.attach( img, {aspectRatio:1} ); 
+					//	debugMode && console.log( jcrop );
+
+						var link = document.createElement("a");
+						var span = document.createElement("span");
+						link.href = dataURL;
+						link.text = "click here";
+						link.download = "snapshot-image.png";
+						link.style.cssText = "color:gold;";
+						span.appendChild( link );
+
+						var text = document.createElement("h3");
+						text.style.cssText = "position:absolute;bottom:40px;left:20px;right:20px;text-align:left;color:white;";
+						text.textContent = "To save image, right click on the image above and select \"Save Image As..\" or alternatively, ";
+						text.appendChild( span );
+						dialog.appendChild( text );
+
+						var row = document.createElement("div");
+						var crop = document.createElement("a");
+						crop.text = "Crop";
+						crop.style.cssText = "position:absolute;bottom:10px;left:15px;z-index:10;"
+						+ "color:white;cursor:pointer;text-decoration:none;font-size:x-large;";
+
+					//	Crop image.
+						crop.addEventListener( "click", function(){ 
+							if ( !jcrop.active ) { dialog.remove(); return; }
+
+							while ( viewer.children.length ){
+								viewer.firstChild.remove(); // debug!
+							}
+
+							var canvas = document.createElement( "canvas" );
+							canvas.style.cssText = "height:100%;border:1px solid;";
+
+							canvas.width = jcrop.active.pos.w;
+							canvas.height = jcrop.active.pos.h;
+
+							var x = 0; var y = 0;
+							var w = jcrop.active.pos.w;
+							var h = jcrop.active.pos.h;
+							var sourceX = jcrop.active.pos.x;
+							var sourceY = jcrop.active.pos.y;
+							var sourceW = jcrop.active.pos.w;
+							var sourceH = jcrop.active.pos.h;
+
+							var ctx = canvas.getContext("2d");
+							ctx.drawImage(img, sourceX, sourceY, sourceW, sourceH, x, y, w, h );
+							dataURL = canvas.toDataURL("image/png"); link.href = dataURL;
+						//	document.getElementById("snapshot-viewer-img").src = dataURL;
+
+							viewer.appendChild( canvas );
+							
+							dialog.remove();
+						//	jcrop.destroy(); 
+						});
+
+						var close = document.createElement("a");
+						close.text = "Close";
+						close.style.cssText = "position:absolute;bottom:10px;right:15px;z-index:10;"
+						+ "color:white;cursor:pointer;text-decoration:none;font-size:x-large;";
+						close.addEventListener( "click", function(){ dialog.remove(); });
+
+						row.appendChild( crop );
+						row.appendChild( close );
+						dialog.appendChild( row );
+
+						return dialog;
+					}
+
+
+				//	Restore.
+					renderer.setClearColor( color, alpha );
+					renderer.setSize( (window.innerWidth - 370), window.innerHeight );
+					renderer.render( scene, camera ); // important!
+					if (groundHelper) groundHelper.visible = restoreGroundHelper;
+
+				});
+
+				row.appendChild( button );
+				tab.appendChild( row );
+
+			})();
+
+		</script>
+
+		<script>
+
+		//	Debug tab.
+
+			(function(){
+				var tab = TabUI.Debug.tab;
+				var row = document.createElement("div");
+				var button = document.createElement("div");
+				button.id = "ground-helper-button";
+				button.textContent = "Hide ground";
+				button.style.cssText = "min-width:60%;width:fit-content;height:40px;font-size:large;";
+				button.classList.add( "form-control", "btn", "btn-primary", "btn-white-outline", "gradient-btn" );
+
+				button.addEventListener( "click", function onClickHandler(){
+					groundHelper.visible = !groundHelper.visible;
+					if ( groundHelper.visible ) 
+						button.textContent = "Hide ground";
+					else
+						button.textContent = "Show ground";
+				});
+				row.style.cssText = "margin:10px 15px;height:35px;text-align:center;";
+				row.appendChild( button );
+				tab.appendChild( row );
+			})();
+
+		</script>
+
+		<script>
+/*
+		//	Avatar loader.
+
+		//	Important: Decal does not work with skinned mesh.
+			var loader = new THREE.OBJLoader();
+			loader.load( "/decal/outfit/RLC_FemaleDecal_2011v1.obj", function( group ){
+
+			//	group is THREE.Group.
+				group.name = "RLC Female Body";
+
+				outfits = group.children.filter(function(item){
+					return item.isMesh;
+				}); debugMode && console.log( outfits );
+
+				debugMode && console.log( 
+					outfits.map(function(item){return item.name;})
+				);
+
+				var s = 1; group.scale.set(s,s,s); // important!
+				debugMode && console.log( group );
+
+				group.traverse( function( child ){
+
+                    if (child.isMesh) {	
+						child.scale.set(s,s,s);
+                        child.castShadow = true;	
+                        child.receiveShadow = true;
+                    }
+
+				//	Replace materials.
+                    if (child.isMesh) (function(child){
+					//	var select = document.getElementById("material-manager");
+
+						if ( Array.isArray(child.material) ) {
+							child.material = child.material.map( function( item ){
+								var name = item.name;
+								return new THREE.MeshStandardMaterial({
+									name:name, side:0, skinning:false, // important!
+								});
+							});
+
+							child.material.forEach( function( material ){
+								MaterialManager.addItem( material );
+							});
+
+						} else {
+
+							var name = child.material.name;
+							child.material = new THREE.MeshStandardMaterial({
+								name:name, side:0, skinning:false, // important!
+							});
+
+							(function( material ){
+								MaterialManager.addItem( material );
+							})( child.material );
+
+						}
+
+					//	debugMode && console.log( child.material );
+                    })( child );
+
+
+				//	Set option values.
+
+                    if (child.isMesh) (function(child){
+
+						var selector = "option[value="+child.name+"]";
+						var element = document.querySelector(selector);
+						if ( element ) element.value = child.uuid;
+
+                    })( child );
+
+				});
+
+			//	scene.add( group ); // debug!
+				controls.center.y = 260;
+				camera.lookAt( controls.center );
+			//	scene.add( group.getObjectByName("HF_Nudebody_HF_Nudebody") );
+
+			}, 
+
+			function onProgress( e ){
+				var size = "(" + Math.floor( e.total / 1000 ).format() + " KB)";
+				var progress = Math.floor( ( e.loaded / e.total ) * 100 ) + "%";
+				console.log( "Loaded", progress, "of", size,  );
+			},
+
+			function onError( err ){
+				console.error(err);
+			});
+*/
+		</script>
+
+		<script>
+/*
+		//	DECAL.
+
+		//	Decal does not work with skinned mesh.
+
+			(function(mesh){
+
+			//	var decal, raycaster;
+
+				decals = [];
+
+				var intersection = {
+					intersects: false,
+					point: new THREE.Vector3(),
+					normal: new THREE.Vector3()
+				};
+
+				var loader = new THREE.TextureLoader();
+				loader.setCrossOrigin("anonymous");
+				var material = new THREE.MeshBasicMaterial( {
+					map: loader.load( "https://i.imgur.com/8eycYxu.png" ),
+					normalScale: new THREE.Vector2( 1, 1 ),
+					depthTest: true,
+					depthWrite: false,
+					polygonOffset: true,
+					polygonOffsetFactor: -4,
+					wireframe: false,
+				});
+
+				//	var mouseHelper;
+				var position = new THREE.Vector3();
+				var orientation = new THREE.Euler();
+				var size = new THREE.Vector3( 10000, 10000, 10000 );
+				var up = new THREE.Vector3( 0, 1, 0 );
+
+				var params = {
+					minScale: 10000,
+					maxScale: 20000,
+					rotate: false,
+					clear: function() {
+						removeDecals();
+					}
+				};
+
+				//	line. important!
+				var line = (function(){
+					var geometry = new THREE.BufferGeometry();
+					geometry.setFromPoints( [ new THREE.Vector3(), new THREE.Vector3() ] );
+					var line = new THREE.Line( geometry, new THREE.LineBasicMaterial( { linewidth: 4 } ) );
+					scene.add( line );
+					return line;
+				})();
+
+				raycaster = new THREE.Raycaster();
+
+				//	mouse helper. important!
+				(function(){
+					mouseHelper = new THREE.Mesh( 
+						new THREE.BoxBufferGeometry( 1, 1, 50 ), 
+						new THREE.MeshNormalMaterial({visible:true}) 
+					);
+					scene.add( mouseHelper );
+				})();
+
+			//	decal helper.
+				(function(){
+					decalHelper = new THREE.BoxHelper( mesh, 0xffff00 );
+					decalHelper.geometry.computeBoundingBox();
+					scene.add( decalHelper );
+				})();
+
+				//	decal helper.
+				//	(function(size){
+				//		var decalBox = new THREE.Mesh( 
+				//			new THREE.BoxBufferGeometry( size.x, size.y, size.z ), 
+				//			new THREE.MeshBasicMaterial({visible:false}) 
+				//		);
+				//		scene.add( decalBox );
+				//		decalHelper = new THREE.EdgesHelper( decalBox, 0xffff00 );
+				//		scene.add( decalHelper ); scene.remove( decalBox );
+				//	})(size);
+
+				var moved = false;
+
+				controls.addEventListener( "change", function() { moved = true; });
+				renderer.domElement.addEventListener( "mousedown", function () { moved = false; }, false );
+
+				renderer.domElement.addEventListener( "mouseup", function() {
+					checkIntersection( mesh ); 
+					if ( !moved ) shoot( material );
+				//	if ( !moved && intersection.intersects ) shoot( material.clone() );
+				});
+
+				renderer.domElement.addEventListener( "mousemove", function(){
+					checkIntersection( mesh );
+				});
+
+				function checkIntersection( mesh ) {
+
+					if ( ! mesh ) return;
+
+					raycaster.setFromCamera( mouse, camera );
+
+					intersects = raycaster.intersectObjects( [ mesh ] );
+
+					if ( intersects.length > 0 ) {
+
+						var p = intersects[ 0 ].point;
+						mouseHelper.position.copy( p );
+						decalHelper.position.set( p.x, p.y, p.z );
+						intersection.point.copy( p );
+
+						var n = intersects[ 0 ].face.normal.clone();
+						n.transformDirection( mesh.matrixWorld );
+						n.multiplyScalar( 10 );
+						n.add( intersects[ 0 ].point );
+
+						intersection.normal.copy( intersects[ 0 ].face.normal );
+						mouseHelper.lookAt( n );
+						decalHelper.lookAt( n );
+
+						var positions = line.geometry.attributes.position;
+						positions.setXYZ( 0, p.x, p.y, p.z );
+						positions.setXYZ( 1, n.x, n.y, n.z );
+						positions.needsUpdate = true;
+
+						intersection.intersects = true;
+
+					} else {
+
+						intersection.intersects = false;
+
+					}
+
+				}
+
+				function shoot( material ) {
+
+					removeDecals();
+
+					position.copy( intersection.point );
+					orientation.copy( mouseHelper.rotation );
+					//	Overwrite position, orientation, size.
+					position.x = 0;
+					orientation = new THREE.Euler();
+					size.z = decalHelper.geometry.boundingBox.getSize(new THREE.Vector3()).z / 2;
+					//	size.x = size.y = decalHelper.geometry.boundingBox.getSize(new THREE.Vector3()).x;
+					//	position.copy( decalHelper.geometry.boundingBox.getCenter(new THREE.Vector3()) );
+
+					//	debugMode && console.log( intersection );
+
+					//	if ( params.rotate ) orientation.z = Math.random() * 2 * Math.PI;
+
+					//	size.set( 10000, 10000, 5000 );
+					//	var scale = params.minScale + Math.random() * ( params.maxScale - params.minScale );
+
+					var geometry = new THREE.DecalGeometry( mesh, position, orientation, size );
+
+					//	var material = material.clone();
+					//	material.color.setHex( Math.random() * 0xffffff );
+
+					decal = new THREE.Mesh( geometry, material );
+					decals.push( decal ); scene.add( decal ); 
+
+					drawUV( geometry );
+
+				}
+
+				//	debug.
+
+				function drawUV( geometry ){
+					var viewer = document.getElementById("decal-viewer");
+					if ( !viewer ) return;
+					while ( viewer.children.length ){
+						viewer.firstChild.remove();
+					}
+					var canvas = THREE.UVsDebug(geometry, 1024);
+					canvas.style.cssText = "width:100%;height:auto;"
+					viewer.appendChild( canvas );
+				}
+
+
+				function mergeDecals(){
+
+					if ( decals.length == 0 ) return;
+
+					else if (decals.length == 1) {
+
+						var mesh = decals[0];
+						scene.add( mesh );
+						drawUV( mesh.geometry );
+						return;
+
+					} else {
+
+						var geometries = [];
+						for ( var i = 0; i < decals.length; i++ ){
+							geometries.push( decals[i].geometry );
+						}
+
+						var geometry = THREE.BufferGeometryUtils.mergeBufferGeometries(geometries);
+						debugMode && console.log( geometry );
+
+						removeDecals();
+
+						var mesh = new THREE.Mesh( geometry, material );
+						scene.add( mesh ); decals.push( mesh );
+						drawUV( mesh.geometry );
+
+					}
+
+
+				}
+
+				function removeDecals() {
+
+					decals.forEach( function( d ) {
+						scene.remove( d );
+					});
+
+					decals = [];
+
+				}
+
+			})(mesh);
+*/
+		</script>
+
+		<script>
+/*
+			(function(){
+
+			//	Layer Slot.
+
+				var layers = {
+					skin:      null,
+					tattoo:    null,
+					makeup:    null,
+					clothing:  null,
+					overcoat:  null,
+					bodypaint: null,
+					underwear: null,
+				};
+
+				var tab = TabUI.Outfit.tab;
+				var row = document.createElement("h3");
+				row.textContent = "Layer";
+
+				var select = document.createElement("select");
+				select.id = "layer-droplist";
+				select.style.cssText = "width:180px;color:#000;float:right;"
+					+ "border:1px solid;border-radius:4px;padding:2px 4px 4px 4px;"
+					+ "font-size:20px;margin-left:10px;";
+
+				select.appendChild(createOption("Skin"));
+				select.appendChild(createOption("Tattoo"));
+				select.appendChild(createOption("Makeup"));
+				select.appendChild(createOption("Clothing"));
+				select.appendChild(createOption("Overcoat"));
+				select.appendChild(createOption("Bodypaint"));
+				select.appendChild(createOption("Underwear"));
+
+				select.addEventListener( "change", function(){
+					OutfitManager.currentLayer = this.value;
+				});
+
+				OutfitManager.addLayer = 
+				OutfitManager.setLayerValue = function(key, item){
+					layers[ key.toLowerCase() ] = item;
+				};
+
+				OutfitManager.getLayer = 
+				OutfitManager.getLayerValue = function(){
+					return layers[ select.value ];
+				};
+
+				OutfitManager.getLayers = 
+				OutfitManager.getLayerItems = function(){
+					return layers;
+				};
+
+				select.value = "";
+				row.appendChild( select );
+				tab.appendChild( row );
+
+				function createOption(name, value){
+					var option = document.createElement("option");
+					option.text = name;
+					option.value = name.toLowerCase();
+					return option;
+				}
+
+			})();
+*/
+
+		</script>
+
+		<script>
+
+		/**
+		 * @author Mugen87 / https://github.com/Mugen87
+		 * @author spite / https://github.com/spite
+		 *
+		 * You can use this geometry to create a decal mesh, that serves different kinds of purposes.
+		 * e.g. adding unique details to models, performing dynamic visual environmental changes or covering seams.
+		 *
+		 * Constructor parameter:
+		 *
+		 * mesh — Any mesh object
+		 * position — Position of the decal projector
+		 * orientation — Orientation of the decal projector
+		 * size — Size of the decal projector
+		 *
+		 * reference: http://blog.wolfire.com/2009/06/how-to-project-decals/
+		 *
+		 */
+/*
+		(function () {
+
+			function DecalGeometry( mesh, position, orientation, size ) {
+
+				THREE.BufferGeometry.call( this );
+
+			// buffers.
+
+				var vertices = [];
+				var normals = [];
+				var uvs = [];
+
+			// helpers.
+
+				var plane = new THREE.Vector3();
+
+			// this matrix represents the transformation of the decal projector.
+
+				var projectorMatrix = new THREE.Matrix4();
+				projectorMatrix.makeRotationFromEuler( orientation );
+				projectorMatrix.setPosition( position );
+
+				var projectorMatrixInverse = new THREE.Matrix4().getInverse( projectorMatrix );
+
+			// generate buffers.
+
+				generate();
+
+			// build geometry.
+
+				this.addAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+				this.addAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
+				this.addAttribute( 'uv', new THREE.Float32BufferAttribute( uvs, 2 ) );
+
+				function generate() {
+
+					var i;
+					var geometry = new THREE.BufferGeometry();
+					var decalVertices = [];
+
+					var vertex = new THREE.Vector3();
+					var normal = new THREE.Vector3();
+
+				// handle different geometry types.
+
+					if ( mesh.geometry.isGeometry ) {
+
+						geometry.fromGeometry( mesh.geometry );
+
+					} else {
+
+						geometry.copy( mesh.geometry );
+
+					}
+
+				//	console.log( geometry );
+
+					var positionAttribute = geometry.attributes.position;
+					var normalAttribute = geometry.attributes.normal;
+
+				// first, create an array of 'DecalVertex' objects
+				// three consecutive 'DecalVertex' objects represent a single face
+				//
+				// this data structure will be later used to perform the clipping
+
+					if ( geometry.index !== null ) {
+
+					// indexed BufferGeometry.
+
+						var index = geometry.index;
+
+						for ( i = 0; i < index.count; i ++ ) {
+
+							vertex.fromBufferAttribute( positionAttribute, index.getX( i ) );
+							normal.fromBufferAttribute( normalAttribute, index.getX( i ) );
+
+							pushDecalVertex( decalVertices, vertex, normal );
+
+						}
+
+					} else {
+
+					// non-indexed BufferGeometry.
+
+						for ( i = 0; i < positionAttribute.count; i ++ ) {
+
+							vertex.fromBufferAttribute( positionAttribute, i );
+							normal.fromBufferAttribute( normalAttribute, i );
+
+							pushDecalVertex( decalVertices, vertex, normal );
+
+						}
+
+					}
+
+				// second, clip the geometry so that it doesn't extend out from the projector
+				
+					decalVertices = clipGeometry( decalVertices, plane.set( 1, 0, 0 ) );
+					decalVertices = clipGeometry( decalVertices, plane.set( - 1, 0, 0 ) );
+					decalVertices = clipGeometry( decalVertices, plane.set( 0, 1, 0 ) );
+					decalVertices = clipGeometry( decalVertices, plane.set( 0, - 1, 0 ) );
+					decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, 1 ) );
+					decalVertices = clipGeometry( decalVertices, plane.set( 0, 0, - 1 ) );
+					
+				// third, generate final vertices, normals and uvs
+
+					for ( i = 0; i < decalVertices.length; i ++ ) {
+
+						var decalVertex = decalVertices[ i ];
+
+					// create texture coordinates (we are still in projector space)
+
+						uvs.push(
+							0.5 + ( decalVertex.position.x / size.x ),
+							0.5 + ( decalVertex.position.y / size.y )
+						);
+
+					// transform the vertex back to world space
+
+						decalVertex.position.applyMatrix4( projectorMatrix );
+
+					// now create vertex and normal buffer data
+
+						vertices.push( decalVertex.position.x, decalVertex.position.y, decalVertex.position.z );
+						normals.push( decalVertex.normal.x, decalVertex.normal.y, decalVertex.normal.z );
+
+					}
+
+				}
+
+				function pushDecalVertex( decalVertices, vertex, normal ) {
+
+				// transform the vertex to world space, then to projector space.
+
+					vertex.applyMatrix4( mesh.matrixWorld );
+					vertex.applyMatrix4( projectorMatrixInverse );
+
+					decalVertices.push( new DecalVertex( vertex.clone(), normal.clone() ) );
+
+				}
+
+				function clipGeometry( inVertices, plane ) {
+
+					var outVertices = [];
+
+					var s = 0.499 * Math.abs( size.dot( plane ) );
+
+					// a single iteration clips one face,
+					// which consists of three consecutive 'DecalVertex' objects.
+
+					for ( var i = 0; i < inVertices.length; i += 3 ) {
+
+						var v1Out, v2Out, v3Out, total = 0;
+						var nV1, nV2, nV3, nV4;
+
+						var d1 = inVertices[ i + 0 ].position.dot( plane ) - s;
+						var d2 = inVertices[ i + 1 ].position.dot( plane ) - s;
+						var d3 = inVertices[ i + 2 ].position.dot( plane ) - s;
+
+						v1Out = d1 > 0;
+						v2Out = d2 > 0;
+						v3Out = d3 > 0;
+
+					// calculate, how many vertices of the face lie outside of the clipping plane.
+
+						total = ( v1Out ? 1 : 0 ) + ( v2Out ? 1 : 0 ) + ( v3Out ? 1 : 0 );
+
+						switch ( total ) {
+
+							case 0: {
+
+							// the entire face lies inside of the plane, no clipping needed.
+
+								outVertices.push( inVertices[ i ] );
+								outVertices.push( inVertices[ i + 1 ] );
+								outVertices.push( inVertices[ i + 2 ] );
+								break;
+
+							}
+
+							case 1: {
+
+								// one vertex lies outside of the plane, perform clipping.
+
+								if ( v1Out ) {
+
+									nV1 = inVertices[ i + 1 ];
+									nV2 = inVertices[ i + 2 ];
+									nV3 = clip( inVertices[ i ], nV1, plane, s );
+									nV4 = clip( inVertices[ i ], nV2, plane, s );
+
+								}
+
+								if ( v2Out ) {
+
+									nV1 = inVertices[ i ];
+									nV2 = inVertices[ i + 2 ];
+									nV3 = clip( inVertices[ i + 1 ], nV1, plane, s );
+									nV4 = clip( inVertices[ i + 1 ], nV2, plane, s );
+
+									outVertices.push( nV3 );
+									outVertices.push( nV2.clone() );
+									outVertices.push( nV1.clone() );
+
+									outVertices.push( nV2.clone() );
+									outVertices.push( nV3.clone() );
+									outVertices.push( nV4 );
+									break;
+
+								}
+
+								if ( v3Out ) {
+
+									nV1 = inVertices[ i ];
+									nV2 = inVertices[ i + 1 ];
+									nV3 = clip( inVertices[ i + 2 ], nV1, plane, s );
+									nV4 = clip( inVertices[ i + 2 ], nV2, plane, s );
+
+								}
+
+								outVertices.push( nV1.clone() );
+								outVertices.push( nV2.clone() );
+								outVertices.push( nV3 );
+
+								outVertices.push( nV4 );
+								outVertices.push( nV3.clone() );
+								outVertices.push( nV2.clone() );
+
+								break;
+
+							}
+
+							case 2: {
+
+							// two vertices lies outside of the plane, perform clipping.
+
+								if ( ! v1Out ) {
+
+									nV1 = inVertices[ i ].clone();
+									nV2 = clip( nV1, inVertices[ i + 1 ], plane, s );
+									nV3 = clip( nV1, inVertices[ i + 2 ], plane, s );
+									outVertices.push( nV1 );
+									outVertices.push( nV2 );
+									outVertices.push( nV3 );
+
+								}
+
+								if ( ! v2Out ) {
+
+									nV1 = inVertices[ i + 1 ].clone();
+									nV2 = clip( nV1, inVertices[ i + 2 ], plane, s );
+									nV3 = clip( nV1, inVertices[ i ], plane, s );
+									outVertices.push( nV1 );
+									outVertices.push( nV2 );
+									outVertices.push( nV3 );
+
+								}
+
+								if ( ! v3Out ) {
+
+									nV1 = inVertices[ i + 2 ].clone();
+									nV2 = clip( nV1, inVertices[ i ], plane, s );
+									nV3 = clip( nV1, inVertices[ i + 1 ], plane, s );
+									outVertices.push( nV1 );
+									outVertices.push( nV2 );
+									outVertices.push( nV3 );
+
+								}
+
+								break;
+
+							}
+
+							case 3: {
+
+							// the entire face lies outside of the plane, so let's discard the corresponding vertices.
+
+								break;
+
+							}
+
+						}
+
+					}
+
+					return outVertices;
+
+				}
+
+				function clip( v0, v1, p, s ) {
+
+					var d0 = v0.position.dot( p ) - s;
+					var d1 = v1.position.dot( p ) - s;
+
+					var s0 = d0 / ( d0 - d1 );
+
+					var v = new DecalVertex(
+						new THREE.Vector3(
+							v0.position.x + s0 * ( v1.position.x - v0.position.x ),
+							v0.position.y + s0 * ( v1.position.y - v0.position.y ),
+							v0.position.z + s0 * ( v1.position.z - v0.position.z )
+						),
+						new THREE.Vector3(
+							v0.normal.x + s0 * ( v1.normal.x - v0.normal.x ),
+							v0.normal.y + s0 * ( v1.normal.y - v0.normal.y ),
+							v0.normal.z + s0 * ( v1.normal.z - v0.normal.z )
+						)
+					);
+
+					// need to clip more values (texture coordinates)? do it this way:
+					// intersectpoint.value = a.value + s * ( b.value - a.value );
+
+					return v;
+
+				}
+
+			}
+
+			DecalGeometry.prototype = Object.create( THREE.BufferGeometry.prototype );
+			DecalGeometry.prototype.constructor = DecalGeometry;
+
+		// helper.
+
+			function DecalVertex( position, normal ) {
+
+				this.position = position;
+				this.normal = normal;
+
+			}
+
+			DecalVertex.prototype.clone = function () {
+
+				return new DecalVertex( this.position.clone(), this.normal.clone() );
+
+			};
+
+		// export.
+
+			THREE.DecalGeometry = DecalGeometry;
+
+		})();
+*/
+		</script>
+
+	</body>
+</html>
